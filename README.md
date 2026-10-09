@@ -35,3 +35,10 @@ The home page lists every root folder automatically. The editor edits all of `co
 - `agent-bookkeeping.md`: shared log where agents sign off their steps
 - `STUCK.md`: shared log of every place the learner got stuck and which nudge helped
 - `projects/<name>/<name>.md`: a project's standalone context file (scope, conventions, sections), alongside its material, reviews and code
+
+## License
+
+- **Code** (the site, project code, tests): [MIT](LICENSE)
+- **Written content** (`content/`, project material): [CC BY 4.0](LICENSE-CONTENT)
+
+Both are free to use, modify and share, as long as you credit the source. © 2026 Sophia Hoffmann.

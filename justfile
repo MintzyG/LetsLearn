@@ -26,7 +26,7 @@ work:
 build:
     pnpm build
 
-# Serve the production build
+# Serve the static build from out/
 start:
     pnpm start
 

@@ -42,3 +42,7 @@ The home page lists every root folder automatically. The editor edits all of `co
 - **Written content** (`content/`, project material): [CC BY 4.0](LICENSE-CONTENT)
 
 Both are free to use, modify and share, as long as you credit the source. © 2026 Sophia Hoffmann.
+
+## Deployment
+
+Every push to `main` builds a static export and publishes it to GitHub Pages (`.github/workflows/pages.yml`): https://mintzyg.github.io/LetsLearn/

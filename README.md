@@ -1,45 +1,37 @@
-# letslearn
+# LetsLearn
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+One Fumadocs site holding many learn-by-building projects. Each project is a separate root with its own sidebar.
 
-Run development server:
+## Commands
 
-```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+Run `just` to list them all.
+
+| Command | What it does |
+|---|---|
+| `just install` | install dependencies |
+| `just run` | docs site at http://localhost:3000 |
+| `just edit` | live editor (Fumadocs Studio) at http://localhost:5180 |
+| `just work` | site + editor together |
+| `just new <slug> "<Title>"` | create a new project root |
+| `just projects` | list project roots |
+| `just check` | lint + type-check |
+| `just build` / `just start` | production build / serve it |
+
+## Layout
+
+```
+content/docs/
+  <project>/
+    meta.json     "root": true makes it a separate sidebar root
+    index.mdx     project landing page
+    ...           chapters; subfolders get their own meta.json
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+The home page lists every root folder automatically. The editor edits all of `content/docs`, and the dev site hot-reloads what it saves.
 
-## Explore
+## Authoring workflow
 
-In the project, you can see:
-
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
-
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
-
-### Fumadocs MDX
-
-Collections are defined with the [Macro API](https://fumadocs.dev/docs/mdx/macro) in `lib/source.ts`.
-
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
-
-## Learn More
-
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+- `loop.md`: the generic writer → learner → reviewer loop every project follows
+- `agent-bookkeeping.md`: shared log where agents sign off their steps
+- `STUCK.md`: shared log of every place the learner got stuck and which nudge helped
+- `projects/<name>/<name>.md`: a project's standalone context file (scope, conventions, sections), alongside its material, reviews and code

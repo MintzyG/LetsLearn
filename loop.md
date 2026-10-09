@@ -34,9 +34,51 @@ Chapters **describe** the implementation; they don't show it. Readers build it t
 
 ---
 
+## Starting a new project
+
+Before any section is written, the project needs its project file, `projects/<name>/<name>.md`. **Don't write it on your own: interview Sophia first.** The project file captures *her* plan for how the book progresses, and every later agent depends on it.
+
+### 1. Ask
+
+Ask her, and discuss until each answer is clear:
+
+- **What is it?** What does the reader build, and what does "done" look like for the whole book?
+- **Who is the reader?** What are they assumed to know or be comfortable with? Why this language for this project?
+- **How should it progress?** This is the most important question. Is it bottom-up, one layer at a time (as in Notwork: Ethernet → ARP → IPv4 → ...)? Feature by feature? From a minimal end-to-end version that grows? Something else? Propose options that fit the subject, with trade-offs, but let her choose.
+- **How big is a section?** One concept, one layer, one milestone? Should a section be split into steps (e.g. "build it locally, then against the real thing")?
+- **What does finishing a section give the reader?** Ideally each section ends in a standalone achievement, so a reader who stops partway through the book still built something real (in Notwork: after ICMP, you have your own working ping).
+- **Scope**: how far the toy goes, and what is explicitly out.
+- **Language, platform and environment**: what runs where, and what the reader is assumed to have (e.g. Notwork assumes one Linux machine).
+- **Default oracles**: how the work is verified (see [Oracles](#oracles)). Suggest the ones that fit; if none do, propose a new one.
+- **Visuals**: which kinds of visuals does the project need (see [Visualization](#visualization))? Ask about each kind:
+  - **Output visuals**: visuals of the code running or of what it produces (a trace, a plot, a rendered simulation). Should the reader build these as part of the project?
+  - **Explanatory visuals**: visuals of the topics, logic and math needed to build it (a diagram of a protocol, an animation of gradient descent), not of the code itself. Where would they help her learn?
+  - **Presentation visuals**: will she make videos about the material?
+- **Code conventions**: how tests, fixtures and stubs are laid out inside `src/`.
+- **Sources**: which references the material should lean on (specs, papers, books, docs).
+
+### 2. Draft and confirm
+
+Draft the project file from her answers and show it to her. Use `projects/notwork/notwork.md` as the golden example of its shape: what it is, the reader, how it progresses, scope, platform and environment, default oracles, visuals, code conventions, sources, known gotchas, and a section table with each section's achievement. Revise until she approves. Only then create `content/docs/<name>/` (`just new <name> "<Title>"`) and start the first section.
+
+When she approves, sign off in `agent-bookkeeping.md` as `<project> / project-file`.
+
+---
+
 ## The loop (one section at a time)
 
-Each project has two homes in this repo: `projects/<name>/` (project file, material, reviews, code) and `content/docs/<name>/` (the published chapters). Paths below are relative to `projects/<name>/` unless they say otherwise.
+Each project has two homes in this repo:
+
+```
+projects/<name>/
+  <name>.md     the project file
+  material/     learning material, one folder per section (writer)
+  reviews/      reviews, one file per section (reviewer)
+  src/          all code: Sophia's implementation, tests, fixtures, stubs
+content/docs/<name>/   the published chapters (Sophia)
+```
+
+Paths below are relative to `projects/<name>/` unless they say otherwise.
 
 ### 1. Writer: learning material + tests
 
@@ -55,7 +97,7 @@ Then produce:
 - **Out of scope**: what is skipped and why real implementations need it.
 - **Explanatory visuals** where a concept is hard to grasp from text alone (see [Visualization](#visualization)). These are optional, for Sophia's learning only.
 
-**b) The test suite**, placed where the project file says.
+**b) The test suite**, in `src/`, laid out as the project file says.
 - Tests specify **what** must happen, never **how**.
 - **Tests are sequential checks of working code.** Order them the way the work naturally progresses, so each one passing marks a real milestone, and the first failing test shows where she is. They nudge naturally that way.
 - **Don't make it easy.** Each test should be a step worth taking, not a tiny step that does the thinking for her. The goal is learning, not a green checkmark.
@@ -145,8 +187,8 @@ There are three kinds. Only one may be built by agents.
 
 | Kind | What it is | Who builds it |
 |---|---|---|
-| **1. Output visuals** | Visuals of the learner's own code running, e.g. a trace viewer, a loss curve, a packet timeline | **Sophia and readers.** If she includes one in the book, it is part of the project, and readers build it too. Agents never build it. |
-| **2. Explanatory visuals** | Visuals that explain a concept, e.g. an interactive diagram or an animation of the math | **Agents may build Sophia's learning version** in the material. The version in the book is hers. |
+| **1. Output visuals** | Visuals of the learner's code running or of what it produces, e.g. a trace viewer, a loss curve, a packet timeline, a rendered simulation | **Sophia and readers.** If she includes one in the book, it is part of the project, and readers build it too. Agents never build it. |
+| **2. Explanatory visuals** | Visuals of the topics, logic and math needed to build the project, not of the code itself, e.g. an interactive protocol diagram or an animation of the math | **Agents may build Sophia's learning version** in the material. The version in the book is hers. |
 | **3. Presentation visuals** | Visuals for Sophia's videos about the material (3Blue1Brown style) | **Sophia.** Agents never build them. |
 
 ---

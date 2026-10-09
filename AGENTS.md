@@ -48,6 +48,7 @@ This applies in conversation too, not just in files. Sophia wants to build it he
 
 The full workflow is in **`loop.md`**. Read it before working on any section. In short:
 
+0. **New project:** before anything else, an agent **interviews Sophia** about how she wants the book structured and how it should progress (e.g. one layer at a time, feature by feature), then drafts the project file from her answers and gets her approval. Never write a project file without asking. See "Starting a new project" in `loop.md`.
 1. **Writer agent** proposes an outline, waits for Sophia's OK, then writes the learning material (concepts, sources, spec, the task described in prose, tiered hints, verification against chosen oracles, out-of-scope notes) and the test suite.
 2. **Sophia** implements the section and writes the chapter.
 3. **Whoever is with her** logs each time she gets stuck in `STUCK.md`. The **writer** refines the material and tests from those entries, until she says **done**, then signs off in `agent-bookkeeping.md`.
@@ -68,7 +69,7 @@ You will usually be spawned for **one section** without the history of earlier c
 loop.md                   the workflow
 agent-bookkeeping.md      shared log + status tables
 STUCK.md                  shared log of where Sophia got stuck
-projects/<name>/          per-project workspace: <name>.md, material/, reviews/, code
+projects/<name>/          per-project workspace: <name>.md, material/, reviews/, src/ (all code)
 content/docs/<name>/      the published book (meta.json with "root": true = its own sidebar)
 app/, components/, lib/   the Fumadocs (Next.js) site
 fumadocs-studio.config.ts the live editor's config

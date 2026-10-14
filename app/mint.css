@@ -25,6 +25,7 @@
 
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-display: var(--font-young-serif), ui-serif, Georgia, serif;
 }
 
 .dark {
@@ -47,9 +48,9 @@
   --color-fd-overlay: rgba(0, 0, 0, 0.5);
 }
 
-/* Headings in Plex Mono, like the Mint spec. */
+/* Headings in Plex Mono, like the Mint spec (the home page sets its own). */
 .prose :is(h1, h2, h3, h4),
-h1 {
+h1:not(.font-display) {
   font-family: var(--font-mono);
   letter-spacing: -0.01em;
 }

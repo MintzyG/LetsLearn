@@ -1,6 +1,6 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import './global.css';
-import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { IBM_Plex_Mono, IBM_Plex_Sans, Young_Serif } from 'next/font/google';
 import StaticSearchDialog from '@/components/search';
 
 const plexSans = IBM_Plex_Sans({
@@ -15,9 +15,16 @@ const plexMono = IBM_Plex_Mono({
   variable: '--font-plex-mono',
 });
 
+// Soft serif for the home page headings.
+const youngSerif = Young_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-young-serif',
+});
+
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} font-sans`} suppressHydrationWarning>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${youngSerif.variable} font-sans`} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <RootProvider search={{ SearchDialog: StaticSearchDialog }}>{children}</RootProvider>
       </body>

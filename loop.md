@@ -45,6 +45,10 @@ Before any section is written, the project needs its project file, `projects/<na
 
 ### 1. Ask
 
+**Always interview her.** Every new project starts with the full interview, even when the project existed before. **Never look at git** (history, old commits, deleted or earlier versions of the project file) when starting a project, and never offer an old answer as a shortcut: the book follows her plan as she states it now.
+
+**Ask with the question tool, never in chat.** Every interview question goes through `AskUserQuestion`, a few per batch, with options that fit the subject (she can always type her own answer). **End every batch with an "anything to add?" question**: a free-text question with a **"No, nothing to add"** option, plus one option that tells her to type her addition in the free-text field (the tool needs at least two options). Never ask interview questions as plain chat text.
+
 Ask her, and discuss until each answer is clear. **Record each answer as it comes**: write it into `projects/<name>/<name>.md`, marked `> Draft: not yet approved.` at the top, in the same turn she gives it, so nothing is lost if the conversation ends midway.
 
 - **What is it?** What does the reader build, and what does "done" look like for the whole book?

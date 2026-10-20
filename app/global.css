@@ -30,3 +30,336 @@ html > body[data-scroll-locked] {
   background-position: -1px -1px;
   mask-image: radial-gradient(ellipse 90% 110% at 85% 0%, #000 25%, transparent 100%);
 }
+
+/*
+ * The reading page. Fumadocs' typography plugin wraps its rules in :where(), so these win
+ * without !important. Measure, rhythm and headings follow the home page.
+ */
+
+/*
+ * Graph paper on the reading page: behind the title, and down the right column with the
+ * table of contents. Both are pinned to the viewport (background-attachment: fixed), so where
+ * they meet their lines line up into one sheet.
+ */
+.book-header,
+#nd-toc {
+  isolation: isolate;
+}
+
+.book-header::before,
+#nd-toc::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-fd-primary) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-fd-primary) 10%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-attachment: fixed;
+}
+
+.book-header {
+  position: relative;
+  max-width: 46rem;
+  padding-bottom: 2rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-primary) 25%, transparent);
+}
+
+.book-header::before {
+  inset: -6rem -3rem 0 -3rem;
+  mask-image: radial-gradient(ellipse 80% 120% at 90% 0%, #000 20%, transparent 85%), linear-gradient(to left, transparent, #000 4rem);
+  mask-composite: intersect;
+}
+
+/*
+ * The TOC column is sticky and as tall as the viewport, so its sheet stays put while you read.
+ * position: fixed with left: auto starts the sheet where the column starts (its static
+ * position); it reaches past the right edge of the window and fades in from the left, so it
+ * crossfades with the header's sheet.
+ */
+#nd-toc::before {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 100vw;
+  margin-left: -5rem;
+  mask-image: linear-gradient(to right, transparent, #000 7rem), linear-gradient(to bottom, #000 45%, transparent 95%);
+  mask-composite: intersect;
+}
+
+.book-body.prose {
+  --tw-prose-body: color-mix(in srgb, var(--color-fd-foreground) 88%, var(--color-fd-muted-foreground));
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  max-width: 46rem;
+}
+
+.book-body.prose > p:first-child {
+  font-size: 1.1875rem;
+  line-height: 1.7;
+  color: var(--color-fd-foreground);
+}
+
+.book-body.prose h2:not(.not-prose, .not-prose *) {
+  font-size: 2rem;
+  line-height: 1.15;
+  margin-top: 3.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.book-body.prose h3:not(.not-prose, .not-prose *) {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2.25rem;
+}
+
+.book-body.prose h4:not(.not-prose, .not-prose *) {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.book-body.prose :is(h2, h3, h4) a {
+  text-decoration: none;
+}
+
+/* Links: a quiet green underline that firms up on hover. */
+.book-body.prose a:not([data-card], .not-prose, .not-prose *) {
+  color: var(--color-fd-foreground);
+  font-weight: 500;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-fd-primary) 45%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms;
+}
+
+.book-body.prose a:not([data-card], .not-prose, .not-prose *):hover {
+  text-decoration-color: var(--color-fd-primary);
+}
+
+.book-body.prose strong {
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+}
+
+/* Lists: short green dashes instead of dots. */
+.book-body.prose ul > li:not(.not-prose *) {
+  position: relative;
+  padding-left: 1.5rem;
+  list-style: none;
+}
+
+.book-body.prose ul > li:not(.not-prose *)::before {
+  content: '';
+  position: absolute;
+  left: 0.2rem;
+  top: 0.85em;
+  width: 0.6rem;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-fd-primary);
+}
+
+.book-body.prose ul:not(.not-prose *) {
+  padding-left: 0;
+}
+
+.book-body.prose ol > li:not(.not-prose *)::marker {
+  color: var(--color-fd-primary);
+  font-family: var(--font-display);
+}
+
+.book-body.prose li + li:not(.not-prose *) {
+  margin-top: 0.5rem;
+}
+
+/* Tables: rows ruled like the home page's chapter list, no box, no zebra. */
+.book-body.prose table {
+  font-size: 0.9375rem;
+  border: none;
+  border-radius: 0;
+  border-collapse: collapse;
+  background: none;
+}
+
+.book-body.prose :is(thead, tbody, tr, th, td) {
+  background: none;
+  border: none;
+}
+
+.book-body.prose thead th {
+  font-weight: 500;
+  color: var(--color-fd-muted-foreground);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
+  padding: 0 1rem 0.6rem 0;
+  text-align: left;
+}
+
+.book-body.prose tbody td {
+  border-bottom: 1px solid var(--color-fd-border);
+  padding: 0.7rem 1rem 0.7rem 0;
+  vertical-align: baseline;
+}
+
+.book-body.prose tbody td:first-child {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+}
+
+/* Inline code: a light tint, no border. */
+.book-body.prose :not(pre) > code {
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+  border: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-fd-primary) 9%, transparent);
+  color: var(--color-fd-foreground);
+}
+
+.book-body.prose blockquote {
+  border-left: 2px solid var(--color-fd-primary);
+  padding-left: 1.25rem;
+  font-style: normal;
+  color: var(--color-fd-muted-foreground);
+}
+
+.book-body.prose hr {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 25%, transparent);
+  margin: 3rem 0;
+}
+
+/* Fumadocs cards: serif titles, a green edge on hover. */
+.book-body.prose :not(h1, h2, h3, h4, h5, h6) > [data-card] {
+  background: var(--color-fd-card);
+  border-color: var(--color-fd-border);
+  padding: 1.1rem 1.25rem;
+  transition: border-color 120ms;
+}
+
+.book-body.prose :not(h1, h2, h3, h4, h5, h6) > [data-card]:hover {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 50%, transparent);
+  background: var(--color-fd-card);
+}
+
+.book-body.prose :not(h1, h2, h3, h4, h5, h6) > [data-card] h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.2rem;
+  margin: 0 0 0.25rem;
+}
+
+.book-body.prose :not(h1, h2, h3, h4, h5, h6) > [data-card] p {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+/* Book components (components/book). */
+
+/*
+ * The book's paper: the home page's graph paper on a card, inside a green outline. ShowOff
+ * wears it loudest; other components vary where it fades (--paper-mask), how fine the grid
+ * is (--paper-size) and how strong the lines are (--paper-ink).
+ */
+.book-paper {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--color-fd-card);
+}
+
+.book-paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-fd-primary) var(--paper-ink, 12%), transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-fd-primary) var(--paper-ink, 12%), transparent) 1px, transparent 1px);
+  background-size: var(--paper-size, 24px) var(--paper-size, 24px);
+  background-position: -1px -1px;
+  mask-image: var(--paper-mask, linear-gradient(to bottom, #000, transparent 90%));
+}
+
+/* Deepening: two more outlined sheets underneath, slightly askew. There's more below. */
+.book-stack {
+  isolation: isolate;
+}
+
+.book-stack::before,
+.book-stack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--color-fd-primary) 30%, transparent);
+  border-radius: 1rem;
+  background: var(--color-fd-card);
+}
+
+.book-stack::before {
+  transform: translate(7px, 7px) rotate(0.7deg);
+}
+
+.book-stack::after {
+  z-index: -2;
+  transform: translate(14px, 14px) rotate(1.4deg);
+  border-color: color-mix(in srgb, var(--color-fd-primary) 18%, transparent);
+}
+
+/* Recap: each thing built is a tile laid on the paper, with a filled green tick. */
+.book-recap :is(ul, ol) {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .book-recap :is(ul, ol) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.book-recap li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
+  border-radius: 0.75rem;
+  background: var(--color-fd-background);
+  line-height: 1.5rem;
+}
+
+.book-recap li::before {
+  content: '✓';
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 6px;
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+/* A revealed hint eases in, so it's clear what just appeared. */
+@media (prefers-reduced-motion: no-preference) {
+  .book-reveal:last-child {
+    animation: book-reveal 220ms ease-out;
+  }
+}
+
+@keyframes book-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

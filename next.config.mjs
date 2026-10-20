@@ -1,4 +1,5 @@
 import { createMDX } from 'fumadocs-mdx/next';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 const withMDX = createMDX();
 
@@ -14,4 +15,12 @@ const config = {
   images: { unoptimized: true },
 };
 
-export default withMDX(config);
+// Files named page.dev.tsx are routes only under `next dev` (e.g. the component showcase),
+// so they never reach the static build.
+export default function nextConfig(phase) {
+  const dev = phase === PHASE_DEVELOPMENT_SERVER;
+  return withMDX({
+    ...config,
+    pageExtensions: dev ? ['dev.tsx', 'mdx', 'md', 'jsx', 'js', 'tsx', 'ts'] : ['mdx', 'md', 'jsx', 'js', 'tsx', 'ts'],
+  });
+}

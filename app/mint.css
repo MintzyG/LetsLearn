@@ -23,6 +23,10 @@
   --color-fd-ring: #0f6b3f;
   --color-fd-overlay: rgba(31, 42, 36, 0.2);
 
+  /* Book components: warnings and gotchas (theme.css --warn), and the second chart series. */
+  --color-warn: #9a5b00;
+  --color-series-2: #eb6834;
+
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
   --font-display: var(--font-young-serif), ui-serif, Georgia, serif;
@@ -46,12 +50,14 @@
   --color-fd-accent-foreground: #4ade9a;
   --color-fd-ring: #4ade9a;
   --color-fd-overlay: rgba(0, 0, 0, 0.5);
+  --color-warn: #fbbf24;
+  --color-series-2: #e0662f;
 }
 
-/* Headings in Plex Mono, like the Mint spec (the home page sets its own). */
-.prose :is(h1, h2, h3, h4),
-h1:not(.font-display) {
-  font-family: var(--font-mono);
+/* Book headings share the home page's serif; smaller ones stay in the sans. */
+.prose :is(h1, h2) {
+  font-family: var(--font-display);
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
 

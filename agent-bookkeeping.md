@@ -25,7 +25,7 @@ One table per project. The first agent to work on a project adds its table; each
 ### notwork
 | NN | Section | Writer | Sophia | Verification | Implementation | Writing |
 |---|---|---|---|---|---|---|
-| 00 | Foundations | – | – | – | – | – |
+| 00 | Foundations | wip | – | done | – | – |
 
 ## Log
 
@@ -36,3 +36,9 @@ One table per project. The first agent to work on a project adds its table; each
 - **Refinements:** link mechanism discussed at length: TAP rejected (its only peer is the host's own kernel; it can't join a Wi-Fi LAN), TUN rejected (drops Ethernet/ARP). Chosen: AF_PACKET with the machine's MAC and the stack's own IP, a veth pair locally, the real interface for show-offs, and a setup script for kernel interference and offloads. IPv4 and ICMP are separate sections.
 - **Open:** what 01 Setup gives the reader to show off (decide when 01 comes up); the setup script isn't written yet; an L1 acoustic modem is in the Later list, for after the book.
 - **Signed off:** interview agent, after Sophia said done
+
+### notwork / 00-foundations — Verification — 2026-10-20
+- **Did:** worked through the four 00 `STUCK.md` entries with Sophia, one correction at a time; edited `projects/notwork/material/00-foundations/material.html`, filled in every entry's Material fix, and added a "Self-checks" rule to `projects/notwork/notwork.md`.
+- **Refinements:** her slips (no fix): 1.3/1.4, `ip addr` vs `ip route`, `-x` vs `-e`. Book fixes: "private doesn't mean local" sentence (2.2b); 2.3 now asks for both halves it grades; byte order is layout, not value (3.1a), answered in hex; the toy HdrLen's unit is now stated in the main text, and 3.3 has its own numbers (the visual's popup showed the old answer); offset vs. length line (her 15 was an off-by-one); 3.4 names which checksum; `-i` taught for tcpdump (4.1c); 4.2 split into 2a/2b. New book-wide rule: no mental hex↔decimal conversions in self-checks.
+- **Open:** self-checks 2 and 3 haven't been passed yet (both reworded); no implementation pass for 00, so the writing pass is next.
+- **Signed off:** verification agent, after Sophia said done

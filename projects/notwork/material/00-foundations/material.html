@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 Foundations · Notwork</title>
+<link rel="stylesheet" href="../../../material.css">
+<script src="../../../material.js" defer></script>
+</head>
+<body>
+<main>
+
+<h1>00 Foundations</h1>
+
+<p>Before you build a network stack, you need a map of the field: what a stack is made of, which addresses exist and why there are several, what a packet looks like as bytes, and which tools let you watch it all happen. This section is that map. It's reading only, with no code and no setup (the setup is section 01), and it takes about an hour.</p>
+
+<div class="callout">
+<p><strong>You can skip this section if you already know:</strong></p>
+<ul>
+<li>why networks are built in layers, and what encapsulation and demultiplexing mean;</li>
+<li>what a MAC address, an IP address and a port are each for;</li>
+<li>what a switch, a router and a Wi-Fi access point each do, and why the MAC addresses on a packet change at every hop while the IP addresses don't;</li>
+<li>what network byte order is, and how to read a header diagram in an RFC;</li>
+<li>what a checksum can and can't do;</li>
+<li>what <code>tcpdump</code>, Wireshark, <code>ip</code> and <code>ethtool</code> are for.</li>
+</ul>
+</div>
+
+<!-- ============================================================== -->
+<h2>1. Layers and encapsulation</h2>
+
+<h3>Why layers</h3>
+
+<p>Getting a web page from a server to your laptop means solving several quite different problems at once:</p>
+<ul>
+<li>getting bits from one device to the next one across a cable or through the air;</li>
+<li>getting a packet from your machine to a machine on the other side of the planet, across dozens of networks that know nothing about each other;</li>
+<li>making a stream of bytes arrive complete and in order, even though packets get lost, duplicated and reordered on the way;</li>
+<li>agreeing on what the bytes mean ("give me the page <code>/</code>").</li>
+</ul>
+
+<p>Networks solve each problem in its own <strong>layer</strong>. Each layer uses the service of the layer below it and offers a service to the layer above, and it doesn't care how the layers below do their job. TCP only needs IP to "deliver this packet to that address, probably"; whether IP does that over Wi-Fi, fiber or a phone line is none of TCP's business. That's why the same TCP code runs on every kind of link, and why you can build a stack one layer at a time, as this book does.</p>
+
+<p>The internet's layers are described in the <a href="https://en.wikipedia.org/wiki/Internet_protocol_suite">TCP/IP model</a>, written down for hosts in <a href="https://www.rfc-editor.org/rfc/rfc1122#section-1.1.3">RFC 1122, section 1.1.3</a>. It has four layers. An older, more detailed reference model, <a href="https://en.wikipedia.org/wiki/OSI_model">OSI</a>, has seven, and it gives the layers the <em>numbers</em> everyone still uses: "an L2 switch", "an L3 router", "an L4 load balancer". So you'll need both:</p>
+
+<table>
+<thead><tr><th>Number (OSI)</th><th>TCP/IP layer</th><th>Its job</th><th>Examples</th><th>Its unit is called</th></tr></thead>
+<tbody>
+<tr><td>L7 (5–7 merged)</td><td>Application</td><td>What the bytes mean</td><td>HTTP, DNS, DHCP</td><td>message</td></tr>
+<tr><td>L4</td><td>Transport</td><td>Which program on the host; reliability, if wanted</td><td>TCP, UDP</td><td>segment (TCP), datagram (UDP)</td></tr>
+<tr><td>L3</td><td>Internet (network)</td><td>Which host, anywhere; getting there across networks</td><td>IPv4, IPv6 (plus ICMP as its helper)</td><td>packet</td></tr>
+<tr><td>L2</td><td>Link</td><td>Which device on this one local network</td><td>Ethernet, Wi-Fi (802.11)</td><td>frame</td></tr>
+<tr><td>L1</td><td><em>(below the model)</em></td><td>Turning bits into signals: voltages, light, radio</td><td>the PHY in your network card</td><td>bits</td></tr>
+</tbody>
+</table>
+
+<p>In practice people say "packet" loosely for any of these units. This book uses the precise names when it matters. The generic term is <a href="https://en.wikipedia.org/wiki/Protocol_data_unit">protocol data unit</a>.</p>
+
+<h3>Encapsulation</h3>
+
+<p>Each layer does its job by adding its own <strong>header</strong> in front of whatever the layer above handed it: a few bytes of control information (addresses, lengths, flags) that the same layer on the other side reads. The layer doesn't look inside what it carries; to it, that's just the <strong>payload</strong>. Some layers also add a <strong>trailer</strong> after the payload; Ethernet adds a checksum there. Wrapping like this is called <a href="https://en.wikipedia.org/wiki/Encapsulation_(networking)">encapsulation</a>.</p>
+
+<p>So an HTTP request leaving your laptop becomes: HTTP bytes, wrapped in a TCP header, wrapped in an IP header, wrapped in an Ethernet header and trailer. What goes onto the link is a single run of bytes, outermost header first.</p>
+
+<p>The receiver unwraps it in the opposite order. And here is the important trick: <strong>every header says what's inside it.</strong> The Ethernet header has an <a href="https://en.wikipedia.org/wiki/EtherType">EtherType</a> field (<code>0x0800</code> means "an IPv4 packet is inside", <code>0x0806</code> means ARP). The IPv4 header has a <a href="https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml">protocol number</a> (6 is TCP, 17 is UDP, 1 is ICMP). The TCP or UDP header has a destination <a href="https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml">port</a> that says which program gets the data. Picking the next handler from a field like this is called <strong>demultiplexing</strong>, and it is how one link carries many protocols and one host runs many programs. The numbers themselves are assigned centrally, by the IEEE (EtherTypes) and by IANA (protocol numbers and ports), so every stack agrees on them.</p>
+
+<figure class="visual">
+<iframe src="visuals/encapsulation.html" title="Encapsulation: one request wrapped layer by layer and unwrapped on the other side" loading="lazy"></iframe>
+<figcaption>Step through one HTTP request: wrapped by each layer on the way down, then unwrapped on the way up, with the field that picks the next layer at every step. (<a href="visuals/encapsulation.html">open on its own</a>)</figcaption>
+</figure>
+
+<h3>Where Notwork sits</h3>
+
+<p>Normally all of this lives in your operating system's kernel. A program like <code>curl</code> opens a socket and writes HTTP bytes; the kernel's TCP, IP and Ethernet code does the wrapping, and the network card's driver hands the frame to the hardware.</p>
+
+<p>Notwork takes the kernel's place from <strong>L2 up</strong>. Your program will read and write whole Ethernet frames, and every header in them, from the Ethernet header inwards, is yours to build and to parse. Below you, the driver and the network card stay as they are: they put your frames on the wire or into the air, and they compute and check the Ethernet trailer. How your program gets at raw frames is the topic of section 01.</p>
+
+<section class="self-check">
+<p class="self-check-title">Self-check</p>
+<ol>
+<li>Your browser sends an HTTP request out over Wi-Fi. Name the headers wrapped around the HTTP bytes, from the outermost (the first byte on the link) to the innermost.</li>
+<li>A receiver has just read an Ethernet header. How does it decide whether the rest of the frame goes to its IPv4 code or to its ARP code?</li>
+<li>Why can the same TCP code run unchanged over Wi-Fi, over a wired cable and over fiber?</li>
+<li>Which layers does Notwork take over from the kernel, and which part stays with the driver and the network card?</li>
+</ol>
+<details class="answers"><summary>Answers</summary>
+<ol>
+<li>Ethernet (as Linux presents a Wi-Fi frame; see section 2), then IPv4, then TCP, then the HTTP bytes. Ethernet also adds a trailer (the frame check sequence) after the payload.</li>
+<li>By the EtherType field in the Ethernet header: <code>0x0800</code> means IPv4 is inside, <code>0x0806</code> means ARP. Every header has a field like this naming what it carries (demultiplexing).</li>
+<li>Because of layering: TCP only relies on the service IP offers (deliver a packet to an address), not on how the link below IP works. The link is IP's concern, and TCP never sees it.</li>
+<li>Notwork takes over everything from L2 (the Ethernet header) up: it builds and parses every header itself. The driver and network card stay below it: they move the frames onto the link (L1) and handle the Ethernet trailer.</li>
+</ol>
+</details>
+</section>
+
+<!-- ============================================================== -->
+<h2>2. Addresses and links</h2>
+
+<h3>Three addresses, three jobs</h3>
+
+<p>A packet carries three kinds of address, one per layer, and each answers a different question.</p>
+
+<table>
+<thead><tr><th>Address</th><th>Layer</th><th>Answers</th><th>Size</th><th>Written as</th></tr></thead>
+<tbody>
+<tr><td><a href="https://en.wikipedia.org/wiki/MAC_address">MAC address</a></td><td>L2</td><td>Which device on <em>this</em> local network?</td><td>6 bytes</td><td><code>ac:67:5d:fd:4c:d3</code> (hex, colon-separated)</td></tr>
+<tr><td><a href="https://en.wikipedia.org/wiki/IPv4#Addressing">IPv4 address</a></td><td>L3</td><td>Which host, anywhere on the internet?</td><td>4 bytes</td><td><code>192.168.1.23</code> (each byte in decimal, dot-separated)</td></tr>
+<tr><td><a href="https://en.wikipedia.org/wiki/Port_(computer_networking)">Port</a></td><td>L4</td><td>Which program on that host?</td><td>2 bytes</td><td><code>80</code> (decimal)</td></tr>
+</tbody>
+</table>
+
+<p><strong>MAC addresses</strong> are burned into the network card by its maker (the first three bytes identify the maker), though the OS can change them. They mean something only on one local network: a router in another country neither knows nor cares about your laptop's MAC. One MAC is special: <code>ff:ff:ff:ff:ff:ff</code> is the <a href="https://en.wikipedia.org/wiki/Broadcast_address#Ethernet">broadcast address</a>, and every device on the local network accepts a frame sent to it. That's how you reach a device whose MAC you don't know yet.</p>
+
+<p><strong>IP addresses</strong> identify a host's place in the internet, and they are structured so routers can find their way: the first part names a <em>network</em>, the rest names a host on it. The split is written as a <a href="https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing">prefix length</a>: <code>192.168.1.23/24</code> means "the first 24 bits (<code>192.168.1</code>) are the network, the last 8 are this host". Every address that starts with the same 24 bits is on the same local network. Some ranges are <a href="https://www.rfc-editor.org/rfc/rfc1918">private</a> (<code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>): any home network may use them, so they are never routed on the public internet. Private doesn't mean local: whether an address is on your link depends only on the prefix. <code>10.0.0.5</code> is private, but it isn't on a <code>192.168.1.0/24</code> link.</p>
+
+<p><strong>Ports</strong> pick the program. Servers listen on well-known ports (80 for HTTP, 53 for DNS); a client gets a temporary "ephemeral" port from its OS for each connection, so replies find their way back to the right program. On Linux these come from a configured range, by default 32768–60999 (<code>ip_local_port_range</code> in the <a href="https://docs.kernel.org/networking/ip-sysctl.html">kernel's ip-sysctl docs</a>).</p>
+
+<p>The examples in this section use the address ranges reserved for documentation (<a href="https://www.rfc-editor.org/rfc/rfc5737">RFC 5737</a> for IPv4, <a href="https://www.rfc-editor.org/rfc/rfc7042#section-2.1.2">RFC 7042</a> for MACs), plus a private <code>192.168.1.0/24</code> home network.</p>
+
+<h3>The link and the network</h3>
+
+<p>A <strong>link</strong>, or local network, is the set of devices that can reach each other directly with L2 frames, addressed by MAC: everything on your home Wi-Fi and plugged into your home router, for example. Your laptop can send a frame straight to any device on it.</p>
+
+<p>Anything off the link has to go through a <strong>router</strong>. Your laptop knows one router by IP, its <a href="https://en.wikipedia.org/wiki/Default_gateway">default gateway</a>, and sends everything that isn't local there. The packet's IP header still names the far-away destination, but the Ethernet frame around it is addressed to the router's MAC. The router unwraps the frame, looks at the destination IP, picks the next router, and wraps the <em>same</em> IP packet in a <em>new</em> frame for the next link. This repeats at every hop.</p>
+
+<p>So <strong>the MAC addresses change at every hop, and the IP addresses stay the same end to end.</strong> (There is one exception on almost every home network: NAT, below.) That one sentence explains why a network needs two kinds of address.</p>
+
+<h3>The devices</h3>
+
+<ul>
+<li>A <a href="https://en.wikipedia.org/wiki/Network_switch">switch</a> works at L2. It connects devices on one link and forwards each frame only to the port where the destination MAC lives, learning which MACs sit behind which port from the source addresses of the frames it sees. It never changes a frame.</li>
+<li>A <a href="https://en.wikipedia.org/wiki/Router_(computing)">router</a> works at L3. It connects different networks and has one interface, with its own MAC, on each of them. It forwards packets by destination IP, re-framing them for the next link as described above.</li>
+<li>A <a href="https://en.wikipedia.org/wiki/Wireless_access_point">wireless access point</a> (AP) bridges Wi-Fi to the wired link: to the rest of the network, the Wi-Fi devices behind it look like they're on the same Ethernet.</li>
+</ul>
+
+<p>The box your internet provider gave you is usually all three in one: an AP, a small switch with a few ports, and a router between your home network and the provider's. It typically also runs a <a href="https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol">DHCP</a> server that hands out addresses on your network, and does <strong>NAT</strong>.</p>
+
+<p><a href="https://en.wikipedia.org/wiki/Network_address_translation">Network address translation</a> (<a href="https://www.rfc-editor.org/rfc/rfc3022">RFC 3022</a>) exists because private addresses can't be routed on the internet. As a packet leaves your home, the router rewrites its private source address (and usually the source port) to the router's own public address, and remembers the mapping so it can rewrite the replies back. That's why a server on the internet sees all your home devices as one address that isn't any of theirs.</p>
+
+<h3>Wi-Fi, presented as Ethernet</h3>
+
+<p>Wi-Fi isn't Ethernet. Over the air, devices send <a href="https://en.wikipedia.org/wiki/802.11_frame_types">802.11 frames</a>, which have a different header (with up to four addresses), their own acknowledgements, and encryption. But on Linux, a Wi-Fi interface in normal ("managed") mode presents itself to the rest of the system as an Ethernet interface: the Wi-Fi layer (<a href="https://docs.kernel.org/driver-api/80211/mac80211.html">mac80211</a>) and the driver convert between 802.11 and Ethernet frames on the way in and out. Everything above the driver, including a raw socket and a packet capture, sees plain Ethernet frames with ordinary MAC addresses.</p>
+
+<p>So your stack speaks Ethernet whether your laptop is plugged in or on Wi-Fi. The only cost is that you can't see the 802.11 details, and you don't need them.</p>
+
+<figure class="visual">
+<iframe src="visuals/path.html" title="The path across networks: MACs change at every hop, IPs stay the same" loading="lazy"></iframe>
+<figcaption>Follow one packet from a laptop to a server. On each link, see the frame's MAC addresses (new on every link) and the IP addresses inside it (the same everywhere, except where NAT rewrites the source). (<a href="visuals/path.html">open on its own</a>)</figcaption>
+</figure>
+
+<p>This leaves one question open: your laptop knows the gateway's <em>IP</em>, but the frame needs the gateway's <em>MAC</em>. How do you find a MAC from an IP? That's section 03.</p>
+
+<section class="self-check">
+<p class="self-check-title">Self-check</p>
+<ol>
+<li>Which kind of address answers each question?
+  <ol type="a">
+  <li>Which program on the server should get this data?</li>
+  <li>Which device on this Wi-Fi network should take this frame?</li>
+  <li>Which machine on the internet is this packet for?</li>
+  </ol>
+</li>
+<li>Your laptop is <code>192.168.1.23/24</code>.
+  <ol type="a">
+  <li>Is <code>192.168.1.200</code> on your local network?</li>
+  <li>Is <code>192.168.2.5</code> on your local network, and if not, where does your laptop send the frame for it?</li>
+  </ol>
+</li>
+<li>A packet travels from your laptop to a server through a dozen routers. Which changes along the way, the destination MAC or the destination IP? Why does that one change, and why can the other stay the same?</li>
+<li>Why does a packet capture on your laptop's Wi-Fi interface show Ethernet headers, when Wi-Fi isn't Ethernet?</li>
+</ol>
+<details class="answers"><summary>Answers</summary>
+<ol>
+<li>
+  <ol type="a">
+  <li>The port (L4).</li>
+  <li>The MAC address (L2).</li>
+  <li>The IP address (L3).</li>
+  </ol>
+</li>
+<li>
+  <ol type="a">
+  <li>Yes: its first 24 bits (<code>192.168.1</code>) match the laptop's network.</li>
+  <li>No: the third byte differs, so it's on another network. The laptop sends the frame to its default gateway (the router's MAC), with <code>192.168.2.5</code> still as the destination IP.</li>
+  </ol>
+</li>
+<li>The destination MAC changes at every hop: MACs only mean something on one link, so each router puts the packet in a new frame addressed to the next device. The destination IP stays the same end to end, because it names the final host. (NAT on the home router rewrites the <em>source</em> IP, not the destination.)</li>
+<li>Linux's Wi-Fi layer (mac80211) and the driver convert between 802.11 frames and Ethernet frames, so the interface presents itself to the rest of the system as Ethernet. Everything above the driver, captures included, sees Ethernet frames.</li>
+</ol>
+</details>
+</section>
+
+<!-- ============================================================== -->
+<h2>3. Packets on the wire</h2>
+
+<h3>A packet is a byte slice</h3>
+
+<p>To your code, a frame is nothing more than a run of bytes, in Go a <code>[]byte</code>. A protocol defines a <strong>layout</strong>: field X is at byte offset N and is so many bits wide. Parsing means reading each field from its offset; building means writing each one there. Most fields are whole bytes, or 2 or 4 bytes. Some are smaller than a byte (a 4-bit number, a single flag bit) and share a byte with their neighbors, so you'll need to pick bits out of a byte with shifts and masks. Offsets count from 0, so a 20-byte header covers offsets 0–19, and the payload starts at offset 20: the payload's offset is the header's length.</p>
+
+<p>Headers come in two kinds. <strong>Fixed-length</strong> ones (like Ethernet's) always have the same size. <strong>Variable-length</strong> ones end with optional extras, called <em>options</em>, and carry a length field that says where the header ends and the payload starts. To keep the next field aligned, such lengths often count in 32-bit words instead of bytes, and the options are <strong>padded</strong> with zero bytes up to a whole word.</p>
+
+<h3>Network byte order</h3>
+
+<p>A 16-bit number takes two bytes. Which one comes first? There are two conventions (<a href="https://en.wikipedia.org/wiki/Endianness">endianness</a>):</p>
+<ul>
+<li><strong>Big-endian</strong>: the most significant byte first. 443 = <code>0x01BB</code> is stored as <code>01 BB</code>, the way you'd write the number.</li>
+<li><strong>Little-endian</strong>: the least significant byte first, so 443 is stored as <code>BB 01</code>.</li>
+</ul>
+
+<p>Internet protocols are all <strong>big-endian</strong>, which is why big-endian is also called <strong>network byte order</strong>. The RFCs spell this out: a group of bytes in a diagram is sent in the order you read it, left to right, and the leftmost bit of a number is its most significant (<a href="https://www.rfc-editor.org/rfc/rfc791#appendix-B">RFC 791, appendix B</a>; <a href="https://www.rfc-editor.org/rfc/rfc1700">RFC 1700</a>, "Data Notations"). Your CPU almost certainly works the other way: x86 is little-endian, and so is ARM as Linux normally runs it.</p>
+
+<p>That makes byte order one of the classic network bugs. If you copy two bytes from a packet straight into a number in your CPU's native order, port 443 reads as <code>0xBB01</code> = 47873, and nothing complains: you just get a wrong number. In this book, every multi-byte field is read and written explicitly in network byte order, whatever the CPU. (Single bytes have no byte order, and a MAC or IP address is a sequence of bytes, read in the order it comes.)</p>
+
+<p>Byte order is about how a number is laid out as bytes, never about the number itself. A field's value is what the protocol means by its bytes, and the protocol says big-endian. Once your code has read that value, the CPU keeps it in memory in its own order, and you never have to think about that.</p>
+
+<h3>Reading a header diagram</h3>
+
+<p>RFCs draw headers in a standard ASCII format. Here is a small one, for a made-up protocol:</p>
+
+<pre><code> 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version| HdrLen|U|A|F| Reserved|         Total Length          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</code></pre>
+
+<p>How to read it:</p>
+<ul>
+<li><strong>The ruler on top counts bits</strong>, 0 to 31, written in two rows: the tens digit (0, 1, 2, 3) above the units digit. Each <code>-+</code> below it is one bit.</li>
+<li><strong>Each row is 32 bits, so 4 bytes.</strong> Row 0 is bytes 0–3, row 1 is bytes 4–7, row 2 starts at byte 8. A field's byte offset is the row times 4, plus its first bit divided by 8.</li>
+<li><strong>Bit 0 is the most significant bit</strong> of the first byte, the one transmitted first (RFC 791, appendix B, again). So <code>Version</code>, in bits 0–3, is the <em>high</em> four bits of byte 0, and <code>HdrLen</code>, in bits 4–7, the low four.</li>
+<li><strong>A field's width is its number of bits</strong>: count the ticks, or subtract the bit numbers. A field may sit inside a byte, fill several bytes, or fill several rows.</li>
+<li><strong>Fields of several bytes are in network byte order</strong>, as in the previous part.</li>
+<li><strong>Options</strong> come after the fixed rows, and their size is given by a length field. <strong>Reserved</strong> bits are unused for now: send zeros, and on receipt, ignore them.</li>
+</ul>
+
+<p>In the toy header, <code>HdrLen</code> counts 32-bit words, and <code>Total Length</code> counts bytes (header plus payload).</p>
+
+<p>The visual below has the full header of the made-up "toy" protocol (it doesn't exist, it's built to have every feature you'll meet in real headers), with a real-looking set of bytes. Click a field to see its bits, its bytes and its value, and for multi-byte fields, what you'd read in each byte order.</p>
+
+<figure class="visual">
+<iframe src="visuals/header.html" title="Reading a header diagram: the made-up toy header, field by field" loading="lazy"></iframe>
+<figcaption>The made-up toy header: its RFC-style diagram and its bytes. Click any field to see where its bits are and what they mean. (<a href="visuals/header.html">open on its own</a>)</figcaption>
+</figure>
+
+<h3>Checksums, in general</h3>
+
+<p>Bits get flipped: radio noise, a bad cable, a buggy device. A <a href="https://en.wikipedia.org/wiki/Checksum">checksum</a> lets the receiver notice. The sender computes a small value from the bytes it sends and puts it in the packet; the receiver computes the same value from what it received and compares. If they differ, the data was damaged, and the receiver <strong>drops the packet</strong>. Fixing it is somebody else's job (TCP resends lost data; UDP doesn't care).</p>
+
+<p>What a checksum can't do:</p>
+<ul>
+<li><strong>Repair data.</strong> It only says "damaged" or "probably fine".</li>
+<li><strong>Catch every error.</strong> Simple checksums miss some patterns of errors (two errors that cancel out, say). Stronger ones, like a <a href="https://en.wikipedia.org/wiki/Cyclic_redundancy_check">CRC</a>, miss far fewer.</li>
+<li><strong>Stop tampering.</strong> Anyone who changes the data can recompute the checksum. Protecting against an attacker takes cryptography (like TLS), not a checksum.</li>
+</ul>
+
+<p>Several layers have their own. Ethernet ends each frame with a 4-byte CRC, the <a href="https://en.wikipedia.org/wiki/Frame_check_sequence">frame check sequence</a> (FCS). The network card computes and checks it, and drops bad frames before software sees them, so <strong>you'll never handle the FCS</strong>: frames reach you without it. Some of the headers you'll build have a checksum field of their own, which your code does compute; each algorithm is explained in the section that first needs it. One more thing about checksums comes up with the tools, below.</p>
+
+<section class="self-check">
+<p class="self-check-title">Self-check</p>
+<ol>
+<li>A 16-bit field arrives as the two bytes <code>01 BB</code>. Answer in hex; no need to convert to decimal.
+  <ol type="a">
+  <li>What is its value?</li>
+  <li>What value would you get by reading those two bytes in the native order of an x86 CPU?</li>
+  </ol>
+</li>
+<li>In an RFC header diagram, a field occupies bits 4–7 of the first row. Which byte is it in, and which part of that byte?</li>
+<li>In the toy header, <code>HdrLen</code> is 6 and <code>Total Length</code> is 100. How many bytes are the header, and how many the payload?</li>
+<li>A packet reaches your code, and the checksum in one of its headers (not Ethernet's FCS, which the card checks) doesn't match. What does your code do with it, and why can't a checksum protect against someone deliberately changing the packet?</li>
+</ol>
+<details class="answers"><summary>Answers</summary>
+<ol>
+<li>
+  <ol type="a">
+  <li><code>0x01BB</code> (443, for reference; decimal isn't required). Network byte order is big-endian, most significant byte first.</li>
+  <li><code>0xBB01</code> (47873; decimal isn't required), because x86 is little-endian and would treat the first byte as the least significant.</li>
+  </ol>
+</li>
+<li>Byte 0, in its low four bits (the lower nibble). Bit 0 is the most significant bit, so bits 0–3 are the high nibble and bits 4–7 the low one.</li>
+<li><code>HdrLen</code> counts 32-bit words, so the header is 6 × 4 = 24 bytes. <code>Total Length</code> counts the header plus the payload in bytes, so the payload is 100 − 24 = 76 bytes.</li>
+<li>Your code drops it (silently; recovering the data, if anyone does, is a higher layer's job). A checksum is not secret: whoever changes the data can just compute the new checksum and write it in, so it only detects accidents. Tampering takes cryptography.</li>
+</ol>
+</details>
+</section>
+
+<!-- ============================================================== -->
+<h2>4. The tools</h2>
+
+<p>You won't use any of these in this section. This is what each one is for, so you recognize them when section 01 gets you set up. All of them are standard on Linux, or one package install away.</p>
+
+<h3>tcpdump and Wireshark: see the traffic</h3>
+
+<p><a href="https://www.tcpdump.org/manpages/tcpdump.1.html">tcpdump</a> captures the frames passing through an interface and prints them decoded, one line each, or saves them to a <a href="https://en.wikipedia.org/wiki/Pcap">pcap</a> file. <a href="https://www.wireshark.org/docs/wsug_html_chunked/">Wireshark</a> does the same with a graphical interface, and shows every field of every header, with its bytes highlighted, much like the toy-header visual above. Together they are your oracle for "what is actually on the link": when your stack thinks it sent something, they show what really went out, and they decode it independently of your code.</p>
+
+<p>A few things worth knowing:</p>
+<ul>
+<li><code>-i</code> picks the interface to listen on (<code>-i wlan0</code>); without it, tcpdump picks one for you, which may not be the one you want.</li>
+<li>tcpdump doesn't print the Ethernet header by default; <code>-e</code> adds it, MAC addresses included. <code>-x</code> or <code>-X</code> adds the raw bytes in hex.</li>
+<li>A <a href="https://www.tcpdump.org/manpages/pcap-filter.7.html">filter expression</a> such as <code>arp</code> or <code>tcp port 80</code> keeps only the traffic you care about. Your network is noisier than you'd think.</li>
+<li>Capturing needs privileges, like everything that sees raw frames.</li>
+<li>A capture shows the frames as Linux presents them, so on Wi-Fi you see Ethernet (part 2), and you see frames at the point where the kernel meets the driver. That has a consequence for checksums, next.</li>
+</ul>
+
+<h3>ip: your interfaces, addresses and routes</h3>
+
+<p><a href="https://man7.org/linux/man-pages/man8/ip.8.html">ip</a>, from the iproute2 package, shows and changes the kernel's network configuration. It has one subcommand per kind of object:</p>
+<table>
+<thead><tr><th>Command</th><th>Shows</th></tr></thead>
+<tbody>
+<tr><td><code>ip link</code></td><td>the interfaces (<code>lo</code>, <code>wlan0</code>, <code>eth0</code>, ...), their MAC addresses and whether they're up; it also creates virtual interfaces (<a href="https://man7.org/linux/man-pages/man8/ip-link.8.html">ip-link(8)</a>)</td></tr>
+<tr><td><code>ip addr</code></td><td>the IP addresses on each interface, with their prefix lengths (<a href="https://man7.org/linux/man-pages/man8/ip-address.8.html">ip-address(8)</a>)</td></tr>
+<tr><td><code>ip route</code></td><td>the routing table, including the default gateway: <code>default via 192.168.1.1</code> (<a href="https://man7.org/linux/man-pages/man8/ip-route.8.html">ip-route(8)</a>)</td></tr>
+<tr><td><code>ip neigh</code></td><td>the neighbors the kernel knows on each link: which MAC goes with which IP (<a href="https://man7.org/linux/man-pages/man8/ip-neighbour.8.html">ip-neighbour(8)</a>)</td></tr>
+</tbody>
+</table>
+
+<h3>ethtool: the network card's settings</h3>
+
+<p><a href="https://man7.org/linux/man-pages/man8/ethtool.8.html">ethtool</a> shows and changes driver and hardware settings. The ones that matter for this book are the <strong>offloads</strong> (<code>ethtool -k</code> shows them, <code>-K</code> changes them): jobs the kernel normally hands to the network card or does in bulk to save CPU time. The best known is <strong>checksum offload</strong>: the kernel leaves outgoing checksum fields unfilled, and the card fills them in just before sending. Since a capture taps the frame <em>before</em> it reaches the card, tcpdump then shows your machine's own outgoing packets with "incorrect" checksums, even though what went on the wire was correct. Other offloads merge several incoming packets into one large one before software sees them. Both get in the way of a stack built by hand, and section 01 deals with them.</p>
+
+<h3>What you'll meet later</h3>
+
+<p>These are the oracles of later sections: the kernel's own tools, which talk to your stack and must accept what it sends.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><a href="https://man7.org/linux/man-pages/man8/ping.8.html"><code>ping</code></a></td><td>asks a host "are you there?" and times the reply</td></tr>
+<tr><td><a href="https://man7.org/linux/man-pages/man8/arping.8.html"><code>arping</code></a></td><td>like ping, one layer down: asks the local network "who has this IP?"</td></tr>
+<tr><td><a href="https://bind9.readthedocs.io/en/latest/manpages.html#dig-dns-lookup-utility"><code>dig</code></a></td><td>asks a DNS server what a name resolves to</td></tr>
+<tr><td><a href="https://en.wikipedia.org/wiki/Netcat"><code>nc</code></a> (netcat)</td><td>opens a raw TCP or UDP connection and pipes your terminal through it</td></tr>
+<tr><td><a href="https://curl.se/docs/manpage.html"><code>curl</code></a></td><td>fetches a URL, for example a web page over HTTP</td></tr>
+</tbody>
+</table>
+
+<section class="self-check">
+<p class="self-check-title">Self-check</p>
+<ol>
+<li>Which tool, and roughly which command, would you use to:
+  <ol type="a">
+  <li>find your default gateway's IP address?</li>
+  <li>see your Wi-Fi interface's MAC address?</li>
+  <li>watch the frames crossing <code>wlan0</code>, with their MAC addresses?</li>
+  <li>check whether checksum offload is on?</li>
+  </ol>
+</li>
+<li>tcpdump shows the packets your own machine sends with "incorrect" checksums, yet the other side accepts them.
+  <ol type="a">
+  <li>Who fills in those checksums?</li>
+  <li>Why does tcpdump see them as wrong?</li>
+  </ol>
+</li>
+</ol>
+<details class="answers"><summary>Answers</summary>
+<ol>
+<li>
+  <ol type="a">
+  <li><code>ip route</code>: the <code>default via …</code> line.</li>
+  <li><code>ip link</code> (the <code>link/ether</code> address of <code>wlan0</code>).</li>
+  <li><code>tcpdump -e -i wlan0</code> (<code>-e</code> adds the Ethernet header), or Wireshark.</li>
+  <li><code>ethtool -k</code> on the interface (the checksum lines in its list of offloads).</li>
+  </ol>
+</li>
+<li>
+  <ol type="a">
+  <li>The network card (checksum offload): the kernel leaves the checksum field unfilled, and the card fills it in just before sending.</li>
+  <li>The capture sees the frame before it reaches the card, so before the checksum is filled in. What goes on the wire has the correct checksum.</li>
+  </ol>
+</li>
+</ol>
+</details>
+</section>
+
+<!-- ============================================================== -->
+<h2>Out of scope</h2>
+
+<ul>
+<li><strong>L1, the physical layer</strong> (signals, modulation, radio): the network card does it, and the book starts at frames. Real stacks rely on it for everything, and it's a whole field of its own.</li>
+<li><strong>IPv6</strong>: not on the book's main path for now. The real internet increasingly runs on it, with a different header and 16-byte addresses, and your LAN is full of it already (you'll see it in captures, and ignore it).</li>
+<li><strong>OSI beyond the layer numbers</strong>: its session and presentation layers never became separate protocols on the internet, so the TCP/IP model is the one that maps to real code.</li>
+<li><strong>How 802.11 works inside</strong> (association, encryption, acknowledgements over the air): the driver handles it and hands us Ethernet. A Wi-Fi stack needs all of it.</li>
+<li><strong>NAT in detail</strong>: you only need to know it rewrites addresses at the edge of your home network. Real routers keep connection tables and have to handle protocols that carry addresses inside their payload.</li>
+</ul>
+
+<p>Next, section 01 sets up your machine so a program of your own can send and receive raw Ethernet frames.</p>
+
+</main>
+</body>
+</html>

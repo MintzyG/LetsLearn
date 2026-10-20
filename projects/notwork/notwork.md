@@ -51,6 +51,10 @@ Not on the main path (for now): IPv6, TLS/HTTPS.
 - **Explanatory visuals:** only where a concept is hard to grasp from text (header layouts, the ARP exchange, the TCP handshake and state machine, the sliding window, ...).
 - **Presentation visuals:** maybe later; no videos planned now.
 
+## Self-checks
+
+- **No mental base conversions.** A self-check never makes the reader convert between hex and decimal in their head. Questions say which base to answer in, and hex answers are accepted as they are (decided in the 00 verification pass).
+
 ## Challenges & deepenings
 
 Each section ends with optional challenges (things to build with what the reader now knows) and deepenings (further into the section's topic). They're described, never solved, and **each one ships with its own tests**. They never reach ahead.
@@ -83,6 +87,11 @@ Scouted up front; the setup script handles what it can, and the material explain
 Fading detail: only the section being worked on is planned in depth, when work reaches it.
 
 - **00 Foundations** (reading only, skippable): layers and encapsulation; addresses and links (MAC vs IP vs port, local network vs internet, what a router/switch/AP does, Wi-Fi presented as Ethernet); packets on the wire (bytes, network byte order, reading RFC header diagrams, checksums in general); the tools (tcpdump/Wireshark, ip, ethtool). Setup is *not* here.
+  - **Size:** medium read, ~1 hour. Four parts, each with a short self-check.
+  - **Pure reading:** no hands-on commands. The tools are introduced (what each is for), not used; first use is in 01.
+  - **Explanatory visuals:** encapsulation (one request wrapped layer by layer, and unwrapped on the other side); the path across networks (MACs change at every hop, IPs stay the same); reading an RFC header diagram (field ↔ bytes, with byte order). The header visual uses a **made-up toy header**, clearly labeled as made up. It has every feature needed to read real diagrams (4-bit fields, flags, 16- and 32-bit fields, a checksum, options and padding) and doesn't reach ahead. A real capture was considered and dropped: it has too many complex fields. The other two visuals are schematic, with documentation addresses (RFC 5737, RFC 7042).
+  - **Achievement:** the reader can read an RFC header diagram, knows which address does what job, and knows what each tool is for.
+  - **Oracles:** none (no code); the self-checks are the only signal.
 - **01 Setup**: its own section: the veth pair, the setup script, privileges, AF_PACKET. What it gives the reader to show off is decided when 01 comes up.
 - **02 Ethernet**: a frame sniffer on the real interface.
 - **03 ARP**: the router learns your MAC.

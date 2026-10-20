@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading a header diagram</title>
+<link rel="stylesheet" href="../../../../theme.css">
+<script src="../../../../material.js" defer></script>
+<!--
+  Explanatory visual for 00 Foundations, part 3: an RFC-style header diagram next to its bytes.
+  The "toy" protocol is made up; it has the features real headers have (4-bit fields, flag
+  bits, reserved bits, 16- and 32-bit fields, a checksum, an option and padding). The bytes
+  were chosen by hand, and every value below (both byte orders included) is written out as
+  data, worked out by hand from those bytes, not computed by this page.
+-->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--text); font: 15px/1.5 var(--font-sans); }
+  .wrap { padding: 16px; max-width: 1080px; margin: 0 auto; }
+  h1 { font: 600 17px var(--font-mono); margin: 0 0 4px; }
+  .sub { color: var(--text-2); margin: 0 0 14px; }
+  .label { font: 600 13px var(--font-mono); color: var(--text-2); margin: 0 0 6px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+
+  /* The diagram: an offset column, then 32 bit columns. */
+  .diagram { display: grid; grid-template-columns: 34px repeat(32, minmax(0, 1fr)); font-family: var(--font-mono); }
+  .ruler { font-size: 11px; color: var(--text-2); text-align: center; line-height: 1.2; }
+  .ruler.tens { color: var(--text); font-weight: 600; }
+  .off { font-size: 11px; color: var(--text-2); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+  .field { margin: 0; border: 1px solid var(--border); border-radius: 0; background: var(--panel); color: var(--text);
+           font: 12px var(--font-mono); padding: 10px 2px; min-height: 46px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .field:hover { background: color-mix(in srgb, var(--series-1) 18%, var(--panel)); }
+  .field.sel { background: color-mix(in srgb, var(--series-1) 40%, var(--surface)); box-shadow: inset 0 0 0 2px var(--text); font-weight: 600; }
+  .field:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .field.payload { grid-column: 2 / span 32; border-style: dashed; color: var(--text-2); }
+  .field.payload.sel { color: var(--text); }
+  .byte-ticks { grid-column: 2 / span 32; display: grid; grid-template-columns: repeat(4, 1fr); font-size: 11px; color: var(--text-2); text-align: center; margin-top: 2px; }
+  .byte-ticks span { border-top: 1px solid var(--border); margin: 0 1px; padding-top: 1px; }
+
+  /* The bytes, four per row like the diagram. */
+  .hex { display: grid; grid-template-columns: 54px repeat(4, 1fr); gap: 4px; font-family: var(--font-mono); margin-bottom: 14px; }
+  .hex .off { justify-content: flex-start; }
+  .hex .b { text-align: center; padding: 6px 0; border-radius: 6px; border: 1px solid var(--border); background: var(--panel); font-size: 15px; }
+  .hex .b.sel { background: color-mix(in srgb, var(--series-1) 40%, var(--surface)); box-shadow: inset 0 0 0 2px var(--text); font-weight: 600; }
+  .hex .more { grid-column: 2 / span 4; text-align: center; color: var(--text-2); font-size: 13px; border: 1px dashed var(--border); border-radius: 6px; padding: 6px; }
+  .hex .more.sel { color: var(--text); box-shadow: inset 0 0 0 2px var(--text); }
+
+  .detail { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--panel); }
+  .detail h2 { font: 600 15px var(--font-mono); margin: 0 0 6px; color: var(--accent); }
+  .detail p { margin: 0 0 8px; }
+  .detail p:last-child { margin: 0; }
+  .detail table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 0 0 8px; }
+  .detail td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .detail td:first-child { color: var(--text-2); white-space: nowrap; width: 1%; }
+  .mono { font-family: var(--font-mono); }
+  .bits { font-family: var(--font-mono); letter-spacing: 1px; }
+  .bits .on { background: color-mix(in srgb, var(--series-1) 40%, var(--surface)); box-shadow: inset 0 -2px 0 var(--text); font-weight: 600; }
+  .bits .off-bit { color: var(--muted); }
+  .bits .gap { display: inline-block; width: 10px; }
+  .order { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px; }
+  .order div { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 13px; background: var(--surface); }
+  .order .right { border-color: var(--good); }
+  .order .wrong { border-color: var(--series-2); }
+  .order b { display: block; font: 600 12px var(--font-mono); }
+  .order .right b { color: var(--good); }
+  .order .wrong b { color: var(--series-2); }
+  .order .num { font-family: var(--font-mono); font-size: 14px; color: var(--text); }
+  .tag { display: inline-block; font: 600 11px var(--font-sans); padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); margin-bottom: 8px; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .field { font-size: 10px; padding: 8px 1px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Reading a header diagram</h1>
+  <p class="sub"><span class="tag">made-up protocol</span> The "toy" header doesn't exist; it's built to have every feature you'll meet in real headers. Click a field.</p>
+
+  <div class="layout">
+    <div>
+      <p class="label">The diagram (bits, 32 per row)</p>
+      <div class="diagram" id="diagram"></div>
+    </div>
+    <div>
+      <p class="label">The bytes (hex, 4 per row)</p>
+      <div class="hex" id="hex"></div>
+      <div class="detail" id="detail"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// The 16 header bytes, as sent (byte 0 first).
+const BYTES = [0x24, 0x60, 0x01, 0x14, 0x00, 0x01, 0xe2, 0x40, 0x13, 0x37, 0x9c, 0x4e, 0x03, 0x03, 0x07, 0x00];
+const PAYLOAD = 260;
+
+// Each field: its row and bit range (inclusive) as in the diagram, its value written out,
+// and for fields of two or more bytes, the value read in each byte order.
+const FIELDS = [
+  { name: "Version", short: "Version", row: 0, from: 0, to: 3, value: "2",
+    meaning: "Which version of the toy protocol this is. Comes first so a receiver can drop a version it doesn't understand before reading anything else." },
+  { name: "Header Length", short: "HdrLen", row: 0, from: 4, to: 7, value: "4, counted in 32-bit words: 4 × 4 = 16 bytes",
+    meaning: "Where the header ends and the payload starts. It's needed because options make the header's length vary; counting in 32-bit words (rows) is a common trick, which is why options get padded to a whole row." },
+  { name: "U flag (Urgent)", short: "U", row: 0, from: 8, to: 8, value: "0: off",
+    meaning: "A one-bit flag: 1 means on, 0 means off. Here the packet is not urgent." },
+  { name: "A flag (Ack requested)", short: "A", row: 0, from: 9, to: 9, value: "1: on",
+    meaning: "A one-bit flag: the sender would like a reply confirming receipt." },
+  { name: "F flag (Final)", short: "F", row: 0, from: 10, to: 10, value: "1: on",
+    meaning: "A one-bit flag: this is the last packet of a message. Flags are packed together, several to a byte." },
+  { name: "Reserved", short: "Reserved", row: 0, from: 11, to: 15, value: "0 (all five bits)",
+    meaning: "Unused for now, kept for future versions. Send zeros; on receipt, ignore whatever is there." },
+  { name: "Total Length", short: "Total Length", row: 0, from: 16, to: 31, value: "276 bytes",
+    be: ["0x0114", "276"], le: ["0x1401", "5121"],
+    meaning: "The size of the whole packet, header plus payload, in bytes. So the payload is 276 − 16 = 260 bytes." },
+  { name: "Sequence Number", short: "Sequence Number", row: 1, from: 0, to: 31, value: "123456",
+    be: ["0x0001E240", "123456"], le: ["0x40E20100", "1088553216"],
+    meaning: "A 32-bit counter that numbers the sender's packets, so the receiver can spot missing or repeated ones. It fills a whole row." },
+  { name: "Sender ID", short: "Sender ID", row: 2, from: 0, to: 15, value: "4919",
+    be: ["0x1337", "4919"], le: ["0x3713", "14099"],
+    meaning: "Which sender this came from, a 16-bit number." },
+  { name: "Checksum", short: "Checksum", row: 2, from: 16, to: 31, value: "0x9C4E",
+    be: ["0x9C4E", "40014"], le: ["0x4E9C", "20124"],
+    meaning: "Computed by the sender over the header; the receiver recomputes it and drops the packet if they differ. The number itself means nothing; only whether it matches does. (The toy doesn't define its algorithm; real ones are taught where first used.)" },
+  { name: "Option Type", short: "Opt Type", row: 3, from: 0, to: 7, value: "3: in the toy, \"priority\"",
+    meaning: "Options start after the fixed rows. Each one begins with a byte saying which option it is." },
+  { name: "Option Length", short: "Opt Len", row: 3, from: 8, to: 15, value: "3 bytes",
+    meaning: "This option's size in bytes, counting its type and length bytes: 1 + 1 + 1 byte of value. A receiver that doesn't know an option type uses this to skip over it." },
+  { name: "Option Value", short: "Opt Value", row: 3, from: 16, to: 23, value: "7: priority 7",
+    meaning: "The option's data: here, one byte." },
+  { name: "Padding", short: "Padding", row: 3, from: 24, to: 31, value: "0",
+    meaning: "Zero bytes that fill the options up to a whole 32-bit row, since Header Length counts whole rows." },
+];
+const PAYLOAD_FIELD = { name: "Payload", payload: true, value: `${PAYLOAD} bytes (276 − 16)`,
+  meaning: "Not part of the header: the data the header carries, which for a real protocol is often the next layer's header and its payload. Where it starts comes from Header Length, and how long it is from Total Length." };
+
+const $ = id => document.getElementById(id);
+
+// Bytes a field covers, and for each, which of its bits (0 = most significant) are in it.
+function coverage(f) {
+  const out = [];
+  for (let bit = f.from; bit <= f.to; bit++) {
+    const index = f.row * 4 + Math.floor(bit / 8);
+    let entry = out.find(e => e.index === index);
+    if (!entry) out.push(entry = { index, bits: [] });
+    entry.bits.push(bit % 8);
+  }
+  return out;
+}
+
+function position(f) {
+  const cover = coverage(f);
+  const width = f.to - f.from + 1;
+  const bitRange = width === 1 ? `bit ${f.from}` : `bits ${f.from}–${f.to}`;
+  let where;
+  if (width % 8 === 0 && f.from % 8 === 0) {
+    where = cover.length === 1 ? `byte ${cover[0].index}` : `bytes ${cover[0].index}–${cover.at(-1).index}`;
+  } else {
+    const b = cover[0];
+    const lo = Math.min(...b.bits), hi = Math.max(...b.bits);
+    const part = width === 4 && lo === 0 ? "the high 4 bits" : width === 4 && lo === 4 ? "the low 4 bits"
+      : width === 1 ? `bit ${lo} of 0–7, counted from the most significant` : `bits ${lo}–${hi} of 0–7, counted from the most significant`;
+    where = `byte ${b.index}, ${part}`;
+  }
+  return { text: `row ${f.row}, ${bitRange} → ${where}`, width };
+}
+
+function bitsHtml(f) {
+  return coverage(f).map(({ index, bits }) => {
+    const s = BYTES[index].toString(2).padStart(8, "0");
+    const spans = [...s].map((c, i) => `<span class="${bits.includes(i) ? "on" : "off-bit"}">${c}</span>`).join("");
+    return `<span title="byte ${index}">${spans}</span>`;
+  }).join('<span class="gap"></span>');
+}
+
+const hex = b => b.toString(16).padStart(2, "0");
+
+function buildDiagram() {
+  const d = $("diagram");
+  const cell = (cls, text) => { const el = document.createElement("div"); el.className = cls; el.textContent = text; d.append(el); return el; };
+  cell("ruler", "");
+  for (let i = 0; i < 32; i++) cell("ruler tens", i % 10 === 0 ? String(i / 10) : "");
+  cell("ruler", "bit");
+  for (let i = 0; i < 32; i++) cell("ruler", String(i % 10));
+  for (let row = 0; row < 4; row++) {
+    const off = cell("off", `+${row * 4}`);
+    off.title = `this row starts at byte ${row * 4}`;
+    for (const f of FIELDS.filter(f => f.row === row)) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "field";
+      el.textContent = f.short;
+      el.title = f.name;
+      el.style.gridColumn = `${f.from + 2} / span ${f.to - f.from + 1}`;
+      el.addEventListener("click", () => select(f));
+      f.el = el;
+      d.append(el);
+    }
+  }
+  cell("off", "+16");
+  const pay = document.createElement("button");
+  pay.type = "button";
+  pay.className = "field payload";
+  pay.textContent = `Payload: ${PAYLOAD} bytes, not part of the header`;
+  pay.addEventListener("click", () => select(PAYLOAD_FIELD));
+  PAYLOAD_FIELD.el = pay;
+  d.append(pay);
+  cell("off", "");
+  const ticks = document.createElement("div");
+  ticks.className = "byte-ticks";
+  ticks.innerHTML = [0, 1, 2, 3].map(i => `<span>byte +${i}</span>`).join("");
+  d.append(ticks);
+}
+
+function buildHex() {
+  const h = $("hex");
+  for (let row = 0; row < 4; row++) {
+    const off = document.createElement("div");
+    off.className = "off";
+    off.textContent = `byte ${row * 4}`;
+    h.append(off);
+    for (let i = 0; i < 4; i++) {
+      const b = document.createElement("div");
+      b.className = "b";
+      b.dataset.index = row * 4 + i;
+      b.textContent = hex(BYTES[row * 4 + i]);
+      h.append(b);
+    }
+  }
+  const off = document.createElement("div");
+  off.className = "off";
+  off.textContent = "byte 16";
+  const more = document.createElement("div");
+  more.className = "more";
+  more.id = "more";
+  more.textContent = `… ${PAYLOAD} bytes of payload`;
+  h.append(off, more);
+}
+
+function select(f) {
+  for (const x of [...FIELDS, PAYLOAD_FIELD]) x.el.classList.toggle("sel", x === f);
+  const covered = f.payload ? [] : coverage(f).map(c => c.index);
+  for (const b of document.querySelectorAll(".hex .b")) b.classList.toggle("sel", covered.includes(Number(b.dataset.index)));
+  $("more").classList.toggle("sel", !!f.payload);
+
+  const box = $("detail");
+  if (f.payload) {
+    box.innerHTML = `<h2>${f.name}</h2><table><tr><td>Starts at</td><td>byte 16 (Header Length × 4)</td></tr>
+      <tr><td>Size</td><td>${f.value}</td></tr></table><p>${f.meaning}</p>`;
+    return;
+  }
+  const pos = position(f);
+  const bytes = coverage(f).map(c => hex(BYTES[c.index])).join(" ");
+  let html = `<h2>${f.name}</h2><table>
+    <tr><td>Where</td><td>${pos.text}</td></tr>
+    <tr><td>Width</td><td>${pos.width} bit${pos.width > 1 ? "s" : ""}</td></tr>
+    <tr><td>Byte${coverage(f).length > 1 ? "s" : ""}</td><td class="mono">${bytes}</td></tr>
+    <tr><td>Bits</td><td class="bits">${bitsHtml(f)}</td></tr>
+    <tr><td>Value</td><td>${f.value}</td></tr></table>`;
+  if (f.be) {
+    html += `<div class="order">
+      <div class="right"><b>✓ big-endian (network order)</b>first byte most significant<br><span class="num">${f.be[0]} = ${f.be[1]}</span></div>
+      <div class="wrong"><b>✗ little-endian (x86 native)</b>first byte least significant<br><span class="num">${f.le[0]} = ${f.le[1]}</span></div>
+    </div>`;
+  } else if (pos.width < 8) {
+    html += `<p class="mono" style="font-size:13px;color:var(--text-2)">Smaller than a byte: it shares byte ${coverage(f)[0].index} with its neighbors, so byte order doesn't apply.</p>`;
+  }
+  html += `<p>${f.meaning}</p>`;
+  box.innerHTML = html;
+}
+
+buildDiagram();
+buildHex();
+const start = new URLSearchParams(location.search).get("field");
+select(start === "payload" ? PAYLOAD_FIELD : FIELDS[Number(start) || 0]);
+</script>
+</body>
+</html>

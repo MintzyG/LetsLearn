@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encapsulation</title>
+<link rel="stylesheet" href="../../../../theme.css">
+<script src="../../../../material.js" defer></script>
+<!--
+  Explanatory visual for 00 Foundations, part 1: one HTTP request wrapped layer by layer on
+  the sender and unwrapped on the receiver. Schematic: the addresses are a private home
+  network (RFC 1918) and documentation MACs (RFC 7042); header sizes are the minimum ones
+  (IPv4 and TCP without options). Only the fields the text explains are shown.
+-->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--text); font: 15px/1.5 var(--font-sans); }
+  .wrap { padding: 16px; max-width: 1080px; margin: 0 auto; }
+  h1 { font: 600 17px var(--font-mono); margin: 0 0 4px; }
+  .sub { color: var(--text-2); margin: 0 0 14px; }
+
+  :root {
+    --l-eth: color-mix(in srgb, var(--series-2) 30%, var(--surface));
+    --l-ip: color-mix(in srgb, var(--series-1) 40%, var(--surface));
+    --l-tcp: color-mix(in srgb, var(--series-1) 16%, var(--surface));
+    --l-app: var(--panel);
+  }
+
+  /* The two hosts' stacks, joined by the link at the bottom. */
+  .hosts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .host { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: color-mix(in srgb, var(--panel) 50%, transparent); }
+  .host h2 { font: 600 14px var(--font-mono); margin: 0 0 2px; }
+  .host .who { color: var(--text-2); font-size: 13px; margin: 0 0 8px; }
+  .layer { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; margin-top: 4px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; }
+  .layer .proto { font-family: var(--font-mono); }
+  .layer .num { color: var(--text-2); font-size: 13px; }
+  .layer.active { outline: 2px solid var(--text); outline-offset: 1px; font-weight: 600; }
+  .layer.app { background: var(--l-app); }
+  .layer.tcp { background: var(--l-tcp); }
+  .layer.ip { background: var(--l-ip); }
+  .layer.eth { background: var(--l-eth); }
+  .link { grid-column: 1 / -1; text-align: center; font: 13px var(--font-mono); color: var(--text-2); border: 1px dashed var(--border); border-radius: 6px; padding: 6px; }
+  .link.active { outline: 2px solid var(--text); color: var(--text); font-weight: 600; }
+
+  /* The unit as it is right now: header segments sized by their byte counts. */
+  .bar-title { font: 600 13px var(--font-mono); color: var(--text-2); margin: 0 0 6px; }
+  .bar { display: flex; min-height: 56px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .seg { min-width: 44px; padding: 6px 6px; border-right: 1px solid var(--border); font-size: 12px; line-height: 1.3; overflow: hidden; }
+  .seg:last-child { border-right: none; }
+  .seg b { display: block; font: 600 12px var(--font-mono); }
+  .seg.app { background: var(--l-app); }
+  .seg.tcp { background: var(--l-tcp); }
+  .seg.ip { background: var(--l-ip); }
+  .seg.eth, .seg.fcs { background: var(--l-eth); }
+  .seg.hot { box-shadow: inset 0 0 0 2px var(--text); }
+  .bytes { color: var(--text-2); font-size: 13px; margin: 6px 0 14px; }
+
+  .explain { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--panel); min-height: 170px; }
+  .explain h3 { font: 600 14px var(--font-mono); margin: 0 0 6px; color: var(--accent); }
+  .explain p { margin: 0 0 8px; }
+  .explain table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 4px 0 8px; }
+  .explain td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .explain td:first-child { white-space: nowrap; color: var(--text-2); }
+  .explain td.val { font-family: var(--font-mono); white-space: nowrap; }
+  .explain tr.key td { font-weight: 600; }
+  .explain .request { font-family: var(--font-mono); white-space: pre-wrap; margin: 0 0 6px; }
+  .explain .crlf { color: var(--text-2); font-size: 12px; }
+  .explain .note { color: var(--text-2); font-size: 13px; }
+
+  .controls { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button { font: 500 14px var(--font-sans); padding: 6px 16px; border-radius: 999px; border: none; background: var(--accent); color: var(--surface); cursor: pointer; }
+  button.secondary { background: none; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+  .step { font: 13px var(--font-mono); color: var(--text-2); }
+  @media (max-width: 640px) { .hosts { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Encapsulation</h1>
+  <p class="sub">A browser on a laptop asks a web server on the same home network for its front page.</p>
+
+  <div class="hosts">
+    <div class="host" id="sender">
+      <h2>Sender: the laptop</h2>
+      <p class="who">192.168.1.23 · 00:00:5e:00:53:01</p>
+    </div>
+    <div class="host" id="receiver">
+      <h2>Receiver: the web server</h2>
+      <p class="who">192.168.1.50 · 00:00:5e:00:53:32</p>
+    </div>
+    <div class="link" id="link">⇢ the link (the home Wi-Fi and LAN): only bytes travel here ⇢</div>
+  </div>
+
+  <p class="bar-title" id="bar-title"></p>
+  <div class="bar" id="bar"></div>
+  <p class="bytes" id="bytes"></p>
+
+  <div class="explain" id="explain"></div>
+
+  <div class="controls">
+    <button type="button" class="secondary" id="prev">◀ Back</button>
+    <button type="button" id="next">Next ▶</button>
+    <input type="range" id="slider" min="0" max="8" value="0" aria-label="Step">
+    <span class="step" id="step"></span>
+  </div>
+</div>
+
+<script>
+const REQUEST = "GET / HTTP/1.1\r\nHost: 192.168.1.50\r\nAccept: */*\r\n\r\n";
+
+// The layers, top to bottom, with the bytes each adds and the fields the text explains.
+const LAYERS = {
+  app: { proto: "HTTP", num: "L7 · application", name: "HTTP request", size: REQUEST.length },
+  tcp: { proto: "TCP", num: "L4 · transport", name: "TCP header", size: 20 },
+  ip:  { proto: "IPv4", num: "L3 · internet", name: "IPv4 header", size: 20 },
+  eth: { proto: "Ethernet", num: "L2 · link", name: "Ethernet header", size: 14 },
+};
+const FCS = 4;
+const ORDER = ["app", "tcp", "ip", "eth"];
+
+const FIELDS = {
+  tcp: [
+    ["Source port", "51234", "the browser's temporary (ephemeral) port, so the reply finds it"],
+    ["Destination port", "80", "the program to hand this to: the web server", true],
+    ["…", "", "16 more bytes of fields (sequence numbers, flags, ...): Part TCP"],
+  ],
+  ip: [
+    ["Source address", "192.168.1.23", "the laptop"],
+    ["Destination address", "192.168.1.50", "the web server"],
+    ["Protocol", "6", "what's inside: 6 means TCP", true],
+    ["…", "", "the other fields of the header: section 04"],
+  ],
+  eth: [
+    ["Destination MAC", "00:00:5e:00:53:32", "the web server's network card, on this link"],
+    ["Source MAC", "00:00:5e:00:53:01", "the laptop's network card"],
+    ["EtherType", "0x0800", "what's inside: 0x0800 means IPv4", true],
+    ["(trailer) FCS", "4 bytes", "a checksum over the frame, added by the network card"],
+  ],
+};
+
+// Each step: which host and layer is active, which layers are still wrapped around the
+// data, which one is highlighted, whether the FCS is there, and the explanation.
+const STEPS = [
+  { host: "sender", layer: "app", wrapped: ["app"], hot: "app", title: "The browser writes its request",
+    text: "The browser hands these bytes to the operating system and asks it to deliver them to 192.168.1.50, port 80. It doesn't add any header itself; HTTP is the payload everything below carries.",
+    fields: null },
+  { host: "sender", layer: "tcp", wrapped: ["tcp", "app"], hot: "tcp", title: "TCP adds its header",
+    text: "TCP puts its header in front. To TCP, the HTTP bytes are just payload: it never looks inside them.",
+    fields: "tcp" },
+  { host: "sender", layer: "ip", wrapped: ["ip", "tcp", "app"], hot: "ip", title: "IPv4 adds its header",
+    text: "IPv4 wraps the whole TCP segment, header and all, and records what it's carrying in the Protocol field.",
+    fields: "ip" },
+  { host: "sender", layer: "eth", wrapped: ["eth", "ip", "tcp", "app"], hot: "eth", fcs: true, title: "Ethernet adds its header and trailer",
+    text: "Ethernet wraps the IPv4 packet into a frame for this link, addressed by MAC, and records what's inside in the EtherType. The network card appends the FCS as it sends.",
+    fields: "eth" },
+  { link: true, wrapped: ["eth", "ip", "tcp", "app"], fcs: true, title: "On the link: just bytes",
+    text: "What travels is one run of bytes, outermost header first: the Ethernet header, then the IPv4 header, then the TCP header, then the HTTP request, then the FCS. Nothing on the link marks where one header ends and the next begins; only the protocols' layouts say so.",
+    note: "Here the server is on the same link, so the frame goes straight to it. If the server were on the internet, routers in between would unwrap and re-wrap the Ethernet layer at every hop: see the path visual in part 2." },
+  { host: "receiver", layer: "eth", wrapped: ["eth", "ip", "tcp", "app"], hot: "eth", title: "Ethernet: is it for me, and what's inside?",
+    text: "The network card checked the FCS and dropped it. Ethernet code reads the header: the destination MAC is this machine's, so it keeps the frame, and EtherType 0x0800 says the payload goes to IPv4. It strips its header and hands the rest up.",
+    fields: "eth" },
+  { host: "receiver", layer: "ip", wrapped: ["ip", "tcp", "app"], hot: "ip", title: "IPv4: is it for me, and what's inside?",
+    text: "IPv4 reads its header: the destination address is this machine's, and Protocol 6 says the payload goes to TCP. It strips its header and hands the segment up.",
+    fields: "ip" },
+  { host: "receiver", layer: "tcp", wrapped: ["tcp", "app"], hot: "tcp", title: "TCP: which program?",
+    text: "TCP reads its header: destination port 80 is where the web server program listens, so the payload goes to it. It strips its header.",
+    fields: "tcp" },
+  { host: "receiver", layer: "app", wrapped: ["app"], hot: "app", title: "The web server reads the request",
+    text: "The web server receives exactly the bytes the browser wrote. Every header was read and removed by the same layer that added it on the other side. That's encapsulation, and the field naming the next layer at every step is demultiplexing.",
+    fields: null },
+];
+
+const $ = id => document.getElementById(id);
+
+function buildStacks() {
+  for (const host of ["sender", "receiver"]) {
+    for (const key of ORDER) {
+      const row = document.createElement("div");
+      row.className = `layer ${key}`;
+      row.dataset.key = key;
+      row.innerHTML = `<span class="proto">${LAYERS[key].proto}</span><span class="num">${LAYERS[key].num}</span>`;
+      $(host).append(row);
+    }
+  }
+}
+
+function segment(cls, title, detail, hot) {
+  const seg = document.createElement("div");
+  seg.className = `seg ${cls}${hot ? " hot" : ""}`;
+  seg.innerHTML = `<b>${title}</b>${detail}`;
+  return seg;
+}
+
+function render(i) {
+  const s = STEPS[i];
+  for (const host of ["sender", "receiver"]) {
+    for (const row of $(host).querySelectorAll(".layer")) {
+      row.classList.toggle("active", s.host === host && s.layer === row.dataset.key);
+    }
+  }
+  $("link").classList.toggle("active", !!s.link);
+
+  const bar = $("bar");
+  bar.replaceChildren();
+  let total = 0;
+  for (const key of s.wrapped) {
+    const L = LAYERS[key];
+    const seg = segment(key, L.proto, `${L.size} B`, s.hot === key);
+    seg.style.flex = `${L.size} 1 0`;
+    bar.append(seg);
+    total += L.size;
+  }
+  if (s.fcs) {
+    const seg = segment("fcs", "FCS", `${FCS} B`, false);
+    seg.style.flex = `${FCS} 1 0`;
+    bar.append(seg);
+    total += FCS;
+  }
+  const outer = s.wrapped[0];
+  const unit = { app: "HTTP message", tcp: "TCP segment", ip: "IPv4 packet", eth: "Ethernet frame" }[outer];
+  $("bar-title").textContent = s.link ? "On the link" : `What ${s.host === "sender" ? "goes down from" : "arrives at"} ${LAYERS[s.layer].proto}: ${unit}`;
+  $("bytes").textContent = `${total} bytes in all${s.fcs ? ", FCS included" : ""}. Each block is drawn to the size of its bytes.`;
+
+  const box = $("explain");
+  box.replaceChildren();
+  const h = document.createElement("h3");
+  h.textContent = s.title;
+  const p = document.createElement("p");
+  p.textContent = s.text;
+  box.append(h, p);
+  if (s.layer === "app") {
+    const pre = document.createElement("p");
+    pre.className = "request";
+    pre.innerHTML = REQUEST.replace(/\r\n/g, '<span class="crlf">\\r\\n</span>\n').trimEnd();
+    const legend = document.createElement("p");
+    legend.className = "note";
+    legend.textContent = `${REQUEST.length} bytes of text. Each \\r\\n is a line break, two bytes; the empty line at the end says the request is complete.`;
+    box.append(pre, legend);
+  }
+  if (s.fields) {
+    const table = document.createElement("table");
+    // On the receiver the FCS is already gone: the network card checked it and dropped it.
+    const rows = FIELDS[s.fields].filter(([name]) => !(s.host === "receiver" && name.includes("FCS")));
+    for (const [name, value, meaning, key] of rows) {
+      const tr = document.createElement("tr");
+      if (key) tr.className = "key";
+      tr.innerHTML = `<td>${name}</td><td class="val">${value}</td><td>${meaning}</td>`;
+      table.append(tr);
+    }
+    box.append(table);
+  }
+  if (s.note) {
+    const note = document.createElement("p");
+    note.className = "note";
+    note.textContent = s.note;
+    box.append(note);
+  }
+
+  $("slider").value = i;
+  $("step").textContent = `step ${i + 1} of ${STEPS.length}`;
+  $("prev").disabled = i === 0;
+  $("next").disabled = i === STEPS.length - 1;
+}
+
+let current = 0;
+const go = i => { current = Math.max(0, Math.min(STEPS.length - 1, i)); render(current); };
+$("prev").addEventListener("click", () => go(current - 1));
+$("next").addEventListener("click", () => go(current + 1));
+$("slider").addEventListener("input", e => go(Number(e.target.value)));
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") go(current + 1);
+  if (e.key === "ArrowLeft") go(current - 1);
+});
+
+buildStacks();
+const start = Number(new URLSearchParams(location.search).get("step"));
+go(Number.isInteger(start) ? start : 0);
+</script>
+</body>
+</html>

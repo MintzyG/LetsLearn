@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The path across networks</title>
+<link rel="stylesheet" href="../../../../theme.css">
+<script src="../../../../material.js" defer></script>
+<!--
+  Explanatory visual for 00 Foundations, part 2: one packet from a laptop to a server on the
+  internet, link by link. Schematic: MACs are documentation MACs (RFC 7042, 00:00:5e:00:53:xx),
+  public IPs are documentation addresses (RFC 5737), the home network is private (RFC 1918).
+  The many hops across the internet are drawn as one link.
+-->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--text); font: 15px/1.5 var(--font-sans); }
+  .wrap { padding: 16px; max-width: 1080px; margin: 0 auto; }
+  h1 { font: 600 17px var(--font-mono); margin: 0 0 4px; }
+  .sub { color: var(--text-2); margin: 0 0 14px; }
+
+  :root {
+    --l-eth: color-mix(in srgb, var(--series-2) 30%, var(--surface));
+    --l-ip: color-mix(in srgb, var(--series-1) 40%, var(--surface));
+    --l-rest: var(--panel);
+  }
+
+  /* The path: nodes with links between them. */
+  .path { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr) minmax(70px, 0.8fr)) minmax(0, 1fr); align-items: stretch; gap: 0; margin-bottom: 16px; }
+  .node { border: 1px solid var(--border); border-radius: 10px; padding: 8px; background: color-mix(in srgb, var(--panel) 60%, transparent); font-size: 13px; }
+  .node h2 { font: 600 13px var(--font-mono); margin: 0 0 2px; }
+  .node .what { color: var(--text-2); margin: 0 0 6px; line-height: 1.35; }
+  .node .looks { font-size: 12px; color: var(--text-2); }
+  .badge { display: inline-block; font: 11px var(--font-mono); padding: 0 5px; border-radius: 4px; margin: 1px 1px 0 0; color: var(--text); border: 1px solid var(--border); }
+  .badge.eth { background: var(--l-eth); }
+  .badge.ip { background: var(--l-ip); }
+  .badge.l4 { background: var(--l-rest); }
+  .hop { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0 4px; cursor: pointer; background: none; border: none; color: var(--text-2); font: 12px var(--font-sans); text-align: center; }
+  .hop .line { width: 100%; border-top: 2px dashed var(--border); margin: 4px 0; position: relative; }
+  .hop .line::after { content: "▶"; position: absolute; right: -4px; top: -9px; font-size: 10px; color: var(--border); }
+  .hop .tag { font: 600 12px var(--font-mono); color: var(--accent); }
+  .hop.active .line { border-top: 3px solid var(--text); }
+  .hop.active .line::after { color: var(--text); }
+  .hop.active { color: var(--text); }
+  .hop:focus-visible { outline: 2px solid var(--accent); border-radius: 6px; }
+
+  /* The frame on the selected link. */
+  .frame-title { font: 600 13px var(--font-mono); color: var(--text-2); margin: 0 0 6px; }
+  .frame { display: grid; grid-template-columns: 1.1fr 1.1fr 0.9fr; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+  .part { padding: 8px 10px; border-right: 1px solid var(--border); }
+  .part:last-child { border-right: none; }
+  .part.eth { background: var(--l-eth); }
+  .part.ip { background: var(--l-ip); }
+  .part.rest { background: var(--l-rest); color: var(--text-2); font-size: 13px; }
+  .part b { font: 600 12px var(--font-mono); display: block; margin-bottom: 4px; color: var(--text); }
+  .kv { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0; flex-wrap: wrap; }
+  .kv .v { font-family: var(--font-mono); }
+  .changed { font: 600 11px var(--font-sans); padding: 0 6px; border-radius: 999px; margin-left: 4px; background: var(--text); color: var(--surface); }
+
+  .explain { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; background: var(--panel); margin-bottom: 14px; }
+  .explain p { margin: 0 0 6px; }
+  .explain p:last-child { margin: 0; }
+  .explain .note { color: var(--text-2); font-size: 13px; }
+
+  /* All links at once, to see the pattern. */
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--text-2); font-weight: 600; }
+  td.v { font-family: var(--font-mono); }
+  td.new { font-weight: 600; }
+  td.new::after { content: " ●"; color: var(--series-2); }
+  tr.active td { background: var(--accent-soft); }
+  tr { cursor: pointer; }
+  .legend { color: var(--text-2); font-size: 12px; margin: 6px 0 0; }
+  .legend span { color: var(--series-2); }
+  .table-wrap { overflow-x: auto; }
+
+  .controls { display: flex; gap: 10px; margin: 0 0 12px; }
+  button.nav { font: 500 14px var(--font-sans); padding: 6px 16px; border-radius: 999px; border: none; background: var(--accent); color: var(--surface); cursor: pointer; }
+  button.nav.secondary { background: none; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  button.nav:disabled { opacity: 0.4; cursor: default; }
+
+  @media (max-width: 760px) {
+    .path { grid-template-columns: 1fr; }
+    .hop { padding: 6px 0; }
+    .hop .line { width: 2px; height: 22px; border-top: none; border-left: 2px dashed var(--border); }
+    .hop.active .line { border-left: 3px solid var(--text); }
+    .hop .line::after { content: "▼"; right: auto; left: -6px; top: auto; bottom: -10px; }
+    .frame { grid-template-columns: 1fr; }
+    .part { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The path across networks</h1>
+  <p class="sub">A laptop on home Wi-Fi sends one packet to a web server on the internet. Pick a link to see the packet as it crosses it.</p>
+
+  <div class="path" id="path"></div>
+
+  <div class="controls">
+    <button type="button" class="nav secondary" id="prev">◀ Previous link</button>
+    <button type="button" class="nav" id="next">Next link ▶</button>
+  </div>
+
+  <p class="frame-title" id="frame-title"></p>
+  <div class="frame" id="frame"></div>
+  <div class="explain" id="explain"></div>
+
+  <div class="table-wrap"><table id="table"></table></div>
+  <p class="legend"><span>●</span> differs from the link before. The MACs change on every link; the destination IP never does; the source IP changes once, at NAT.</p>
+</div>
+
+<script>
+const NODES = [
+  { name: "Laptop", what: "192.168.1.23 on the home network", looks: ["eth", "ip", "l4"] },
+  { name: "Home router", what: "AP + switch + router + NAT, in one box", looks: ["eth", "ip", "l4"], l4note: "ports, for NAT" },
+  { name: "ISP router", what: "your provider's first router", looks: ["eth", "ip"] },
+  { name: "Datacenter router", what: "the last router, in front of the server", looks: ["eth", "ip"] },
+  { name: "Web server", what: "203.0.113.10", looks: ["eth", "ip", "l4"] },
+];
+
+const SERVER_IP = "203.0.113.10";
+
+// One entry per link: the link-layer header and IPv4 addresses of the packet on it.
+const LINKS = [
+  { tag: "Link 1", label: "home Wi-Fi",
+    dstMac: "00:00:5e:00:53:02", srcMac: "00:00:5e:00:53:01", srcIp: "192.168.1.23", dstIp: SERVER_IP,
+    text: "The server isn't on the home network, so the laptop sends the frame to its default gateway: the destination MAC is the home router's, while the destination IP is the server's.",
+    note: "Over the air this is an 802.11 frame; the laptop's driver presents it to Linux as Ethernet, which is what a capture on the laptop shows." },
+  { tag: "Link 2", label: "line to the provider",
+    dstMac: "00:00:5e:00:53:04", srcMac: "00:00:5e:00:53:03", srcIp: "198.51.100.7", dstIp: SERVER_IP, nat: true,
+    text: "The home router unwrapped the frame, looked at the destination IP and wrapped the packet in a new frame for the next link: from its own outside interface (it has one MAC per network it's on) to the ISP's router. On the way out, NAT replaced the private source address with the home's one public address.",
+    note: "Your provider's line may not be Ethernet (DSL, cable and fiber each have their own link layer). Whatever it is, it has its own link-layer header, new for this link; it's drawn here as Ethernet." },
+  { tag: "Link 3…", label: "across the internet (10–20 hops, drawn as one)",
+    dstMac: "(new on every hop)", srcMac: "(new on every hop)", srcIp: "198.51.100.7", dstIp: SERVER_IP, many: true,
+    text: "Every router along the way does the same thing: unwrap the frame, read the destination IP, pick the next router, wrap the same IP packet in a new frame. The IP addresses ride through untouched.",
+    note: "Real routers also update a couple of IPv4 fields per hop (a hop counter, and the header checksum that covers it); that's section 04 and 06." },
+  { tag: "Last link", label: "datacenter network",
+    dstMac: "00:00:5e:00:53:08", srcMac: "00:00:5e:00:53:07", srcIp: "198.51.100.7", dstIp: SERVER_IP,
+    text: "The last router sees that the destination IP is on its own local network, so the frame goes straight to the server's MAC. The server finds its own MAC and its own IP, and TCP passes the data to the web server program by port.",
+    note: "The server sees the request coming from 198.51.100.7 and replies there; the home router's NAT turns that back into 192.168.1.23 on the way in." },
+];
+
+const FIELDS = [
+  ["dstMac", "Destination MAC", "eth"], ["srcMac", "Source MAC", "eth"],
+  ["srcIp", "Source IP", "ip"], ["dstIp", "Destination IP", "ip"],
+];
+const LAYER_NAME = { eth: "L2", ip: "L3", l4: "L4" };
+
+const $ = id => document.getElementById(id);
+const changed = (i, key) => i > 0 && LINKS[i][key] !== LINKS[i - 1][key];
+
+function buildPath() {
+  const path = $("path");
+  NODES.forEach((node, i) => {
+    const el = document.createElement("div");
+    el.className = "node";
+    const badges = node.looks.map(l => `<span class="badge ${l}">${LAYER_NAME[l]}</span>`).join("");
+    el.innerHTML = `<h2>${node.name}</h2><p class="what">${node.what}</p>
+      <div class="looks">reads ${badges}${node.l4note ? ` <span>(${node.l4note})</span>` : ""}</div>`;
+    path.append(el);
+    if (i < LINKS.length) {
+      const hop = document.createElement("button");
+      hop.type = "button";
+      hop.className = "hop";
+      hop.dataset.index = i;
+      hop.innerHTML = `<span class="tag">${LINKS[i].tag}</span><span class="line"></span><span>${LINKS[i].label}</span>`;
+      hop.addEventListener("click", () => go(i));
+      path.append(hop);
+    }
+  });
+}
+
+function buildTable() {
+  const table = $("table");
+  const head = document.createElement("tr");
+  head.innerHTML = `<th>Link</th>${FIELDS.map(([, name]) => `<th>${name}</th>`).join("")}`;
+  table.append(head);
+  LINKS.forEach((link, i) => {
+    const tr = document.createElement("tr");
+    tr.dataset.index = i;
+    tr.innerHTML = `<td>${link.tag}</td>` + FIELDS.map(([key]) =>
+      `<td class="v${changed(i, key) ? " new" : ""}">${link[key]}</td>`).join("");
+    tr.addEventListener("click", () => go(i));
+    table.append(tr);
+  });
+}
+
+function kv(link, i, key, name) {
+  let flag = "";
+  if (changed(i, key)) flag = `<span class="changed">${key === "srcIp" ? "rewritten by NAT" : "new"}</span>`;
+  if (link.many && key.endsWith("Mac")) flag = `<span class="changed">new each hop</span>`;
+  return `<div class="kv"><span>${name}</span><span class="v">${link[key]}${flag}</span></div>`;
+}
+
+function render(i) {
+  const link = LINKS[i];
+  for (const hop of document.querySelectorAll(".hop")) hop.classList.toggle("active", Number(hop.dataset.index) === i);
+  for (const tr of document.querySelectorAll("tr[data-index]")) tr.classList.toggle("active", Number(tr.dataset.index) === i);
+
+  $("frame-title").textContent = `${link.tag}: ${NODES[i].name} → ${NODES[i + 1].name}`;
+  $("frame").innerHTML = `
+    <div class="part eth"><b>Ethernet header (L2): this link only</b>${kv(link, i, "dstMac", "Destination MAC")}${kv(link, i, "srcMac", "Source MAC")}</div>
+    <div class="part ip"><b>IPv4 header (L3): end to end</b>${kv(link, i, "srcIp", "Source IP")}${kv(link, i, "dstIp", "Destination IP")}</div>
+    <div class="part rest"><b>TCP + HTTP</b>Ports and the request. Untouched by routers (only NAT rewrites the source port).</div>`;
+  $("explain").innerHTML = `<p>${link.text}</p><p class="note">${link.note}</p>`;
+  $("prev").disabled = i === 0;
+  $("next").disabled = i === LINKS.length - 1;
+}
+
+let current = 0;
+function go(i) { current = Math.max(0, Math.min(LINKS.length - 1, i)); render(current); }
+$("prev").addEventListener("click", () => go(current - 1));
+$("next").addEventListener("click", () => go(current + 1));
+
+buildPath();
+buildTable();
+const start = Number(new URLSearchParams(location.search).get("link"));
+go(Number.isInteger(start) ? start : 0);
+</script>
+</body>
+</html>

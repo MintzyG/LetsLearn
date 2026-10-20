@@ -1,7 +1,0 @@
-{
-  "title": "Lorem Beta",
-  "description": "Another placeholder project",
-  "icon": "Library",
-  "root": true,
-  "pages": ["index", "..."]
-}

@@ -1,0 +1,157 @@
+/*
+  Shared stylesheet for learning material (projects/<name>/material/NN-slug/material.html).
+  Every material page links it as ../../../material.css. See "Material format" in loop.md.
+*/
+/* Colors and fonts: the Mint theme tokens. */
+@import url("theme.css");
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: 17px/1.7 var(--font-sans);
+}
+main { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+
+/* Headings in Plex Mono, like the site's docs pages. */
+h1, h2, h3, h4 { font-family: var(--font-mono); font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: 32px; line-height: 1.2; margin: 0 0 20px; }
+h2 { font-size: 22px; line-height: 1.3; margin: 56px 0 12px; padding-top: 16px; border-top: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+h3 { font-size: 18px; margin: 32px 0 8px; }
+p, ul, ol, table { margin: 0 0 16px; }
+li { margin: 4px 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+hr { display: none; } /* h2 already draws the divider */
+
+code {
+  font: 0.88em var(--font-mono);
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; display: block; overflow-x: auto; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--text-2); font-weight: 600; }
+
+/* Self-checks: the questions are visible, the answer box follows them (added by
+   material.js), and the reference answers are folded underneath. */
+section.self-check {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 24px 0 16px;
+  background: color-mix(in srgb, var(--panel) 50%, transparent);
+}
+section.self-check > :last-child { margin-bottom: 0; }
+.self-check-title { font-family: var(--font-mono); font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+section.self-check details { background: var(--surface); }
+
+/* Folded blocks: reference answers, tiered hints. */
+details {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+details > summary { cursor: pointer; font-family: var(--font-mono); font-weight: 500; color: var(--accent); }
+details[open] > summary { margin-bottom: 8px; }
+details > :last-child { margin-bottom: 0; }
+
+/* The "you can skip this if..." box and other callouts. */
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin: 0 0 16px;
+}
+.callout > :last-child { margin-bottom: 0; }
+
+/* An embedded explanatory visual. It is wider than the text column, so a
+   two-panel visual fits; material.js sets the iframe's height. */
+figure.visual {
+  margin: 24px 0;
+  width: min(1080px, calc(100vw - 32px));
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
+figure.visual iframe {
+  display: block;
+  width: 100%;
+  height: 800px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+figure.visual figcaption { font-size: 14px; color: var(--text-2); margin-top: 6px; text-align: center; }
+
+/* Faint graph paper behind the page title, as on the site's home page (.mint-grid). */
+main > h1:first-child {
+  position: relative;
+  isolation: isolate;
+  padding: 40px 0 8px;
+}
+main > h1:first-child::before {
+  content: "";
+  position: absolute;
+  inset: -32px -16px -16px;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--accent) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--accent) 10%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 90% 110% at 85% 0%, #000 25%, transparent 100%);
+}
+
+/* Answer box before each self-check: write your answer, Claude checks it.
+   Added by material.js; works when the page is served by `just material`. */
+form.answer { margin: 0 0 12px; }
+form.answer label { display: block; font-family: var(--font-mono); font-size: 14px; color: var(--text-2); margin-bottom: 6px; }
+form.answer textarea {
+  display: block;
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  padding: 10px 12px;
+  font: 15px/1.5 var(--font-sans);
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+form.answer textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+form.answer .row { display: flex; align-items: center; gap: 12px; margin-top: 8px; font-size: 14px; color: var(--text-2); }
+form.answer button {
+  font: 500 14px var(--font-sans);
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: var(--surface);
+  cursor: pointer;
+}
+form.answer button:disabled { opacity: 0.6; cursor: progress; }
+.feedback {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 15px;
+}
+.feedback > :last-child { margin-bottom: 0; }
+.feedback .verdict { font-family: var(--font-mono); font-weight: 600; margin-right: 6px; }
+.feedback.correct { border-color: var(--good); }
+.feedback.correct .verdict { color: var(--good); }
+.feedback.partly .verdict, .feedback.not-yet .verdict { color: var(--warn); }
+.feedback.partly, .feedback.not-yet { border-color: var(--warn); }
+.feedback .logged { margin-top: 6px; font-size: 13px; color: var(--muted); }

@@ -1,0 +1,75 @@
+/*
+  Theme tokens for learning material and its visuals: colors and fonts only, no layout.
+  Mirrors the site's Mint theme (app/mint.css, fonts from app/layout.tsx); when that
+  changes, change this file and nothing else.
+
+  Linked by material.css (material pages) and directly by each visual. Chart colors
+  were validated for color-vision deficiency on these surfaces (dataviz palette checker).
+*/
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+
+:root {
+  color-scheme: light;
+  --surface: #eef3ee;      /* fd-background: soft sage, never pure white */
+  --panel: #e5ece6;        /* fd-card */
+  --muted-bg: #e3ebe4;     /* fd-muted */
+  --border: #c9d6cc;
+  --grid: #d6e1d8;         /* chart gridlines */
+  --text: #1f2a24;
+  --text-2: #56695c;       /* fd-muted-foreground */
+  --muted: #7a8f80;
+  --accent: #0f6b3f;       /* fd-primary */
+  --accent-soft: #d6e5d9;  /* fd-accent */
+  --code-bg: #e5ece6;
+  --good: #0f6b3f;
+  --warn: #9a5b00;
+
+  /* Chart series, in this order. Text never wears these; it stays in --text/--text-2. */
+  --series-1: #0f6b3f;     /* green */
+  --series-2: #eb6834;     /* orange */
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #0d0f0e;
+    --panel: #131614;
+    --muted-bg: #1a1d1b;
+    --border: #2a302a;
+    --grid: #1f241f;
+    --text: #d4ddd6;
+    --text-2: #7a8f80;
+    --muted: #62786a;
+    --accent: #4ade9a;
+    --accent-soft: rgba(74, 222, 154, 0.08);
+    --code-bg: #131614;
+    --good: #4ade9a;
+    --warn: #fbbf24;
+    --series-1: #29a86e;
+    --series-2: #e0662f;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #0d0f0e;
+  --panel: #131614;
+  --muted-bg: #1a1d1b;
+  --border: #2a302a;
+  --grid: #1f241f;
+  --text: #d4ddd6;
+  --text-2: #7a8f80;
+  --muted: #62786a;
+  --accent: #4ade9a;
+  --accent-soft: rgba(74, 222, 154, 0.08);
+  --code-bg: #131614;
+  --good: #4ade9a;
+  --warn: #fbbf24;
+  --series-1: #29a86e;
+  --series-2: #e0662f;
+}
+
+/* Sequential ramp for magnitude (e.g. a heatmap), dark to light, the same in both modes.
+   Canvas code can't read CSS lists, so visuals copy it: */
+/* #062616 #083720 #0a482a #0d5a35 #0f6b3f #1b7c4c #278c5a #339d67 #3fae74 #64be8e #8acea8 #afdec2 #d4eedc */

@@ -20,13 +20,15 @@ Chapters **describe** what to build; they don't show it. Readers implement it th
 
 | You MAY write | You MUST NOT write |
 |---|---|
-| Learning material (`projects/<name>/material/`) | Implementation code for a section. Not even "just a sketch" or pseudocode that is really code |
-| Explanatory visuals for her learning version of the material | Chapters in `content/docs/<name>/` (the book is hers), including the visuals in them |
-| Tests and fixtures her code must pass | The summary/reference blocks in chapters |
-| Stubs: signatures, doc comments, placeholder bodies | Output visuals (of the learner's code running) |
-| Reviews (`projects/<name>/reviews/`) | Presentation visuals (for her videos) |
-| Entries in `agent-bookkeeping.md` and `STUCK.md` | Anything that solves the task for her |
-| Site infrastructure (Next.js, Fumadocs, justfile), only when asked | |
+| Learning material (`projects/<name>/material/`, as HTML pages with embedded visuals; see "Material format" in `loop.md`), including the spec in prose | Implementation code for a section. Not even "just a sketch" or pseudocode that is really code |
+| Explanatory visuals for her learning version of the material | Stubs: signatures, placeholder bodies, skeleton files. Shaping the code is part of what she learns |
+| Tests and fixtures her code must pass | Chapters in `content/docs/<name>/` (the book is hers), including the visuals in them |
+| Reviews (`projects/<name>/reviews/`) | The summary/reference blocks in chapters |
+| Entries in `agent-bookkeeping.md` and `STUCK.md` | Output visuals (of the learner's code running) |
+| Site infrastructure (Next.js, Fumadocs, justfile), only when asked | Presentation visuals (for her videos) |
+| | Anything that solves the task for her |
+
+**The spec is a spec, not stubs.** The material describes, in prose, what must exist (types, functions, what they take and return, how they behave, which errors they report), the way an RFC or a man page would. It never hands her code to fill in. The tests use the names from the spec, so until she writes them the tests don't compile, and the compiler error says what's missing.
 
 The tests are a first draft too: they say *what* her code must do, never *how*. They are sequential checks that nudge naturally, without making the task easy. Material and tests get refined together while she works, wherever she gets stuck. The refined tests ship with the book so readers can verify their own work.
 
@@ -56,6 +58,8 @@ The full workflow is in **`loop.md`**. Read it before working on any section. In
 5. **Reviewer agent** (not necessarily the writer) reviews the step and suggests changes, each with a confidence score from 1 to 5. Sophia decides what to apply. When she says **done**, the reviewer signs off.
 6. Next section.
 
+Every book starts with a skippable **section 00 (Foundations)**. It is reading only, with no code and no tests, and lays the foundations of the book's subject (not programming basics). Sections never reach ahead: each one builds only on what came before. See "Section 00" in `loop.md`.
+
 You will usually be spawned for **one section** without the history of earlier conversations. These files are your context:
 
 - `loop.md`: the generic workflow, shared by every project
@@ -69,7 +73,10 @@ You will usually be spawned for **one section** without the history of earlier c
 loop.md                   the workflow
 agent-bookkeeping.md      shared log + status tables
 STUCK.md                  shared log of where Sophia got stuck
-projects/<name>/          per-project workspace: <name>.md, material/, reviews/, src/ (all code)
+projects/<name>/          per-project workspace: <name>.md, material/, answers/, reviews/, src/ (all code)
+projects/theme.css        the Mint theme's colors and fonts, for material and visuals
+projects/material.css|js  shared style and script for every material page
+scripts/                  the material server (answer checking)
 content/docs/<name>/      the published book (meta.json with "root": true = its own sidebar)
 app/, components/, lib/   the Fumadocs (Next.js) site
 fumadocs-studio.config.ts the live editor's config
@@ -85,6 +92,7 @@ Run `just` to list them. The main ones:
 - `just edit`: the live editor (Fumadocs Studio) at http://localhost:5180
 - `just work`: the site and the editor together
 - `just new <slug> "<Title>"`: create a new book root
+- `just material <project> [NN]`: read a project's material, with self-check answers checked by Claude
 - `just check`: lint and type check
 - `just build`: production build
 
@@ -97,4 +105,15 @@ pnpm is the package manager.
 - **Verify against an oracle** (real world, interop, reference swap, golden data, invariants, ...; see `loop.md`). Use the real world, as early as possible, when it's available. If no oracle fits, suggest one to Sophia.
 - **Cite sources** (Wikipedia, specs/RFCs, official docs, man pages) for every non-trivial claim.
 - **Keep everything clean and readable.** Readers will study it.
-- **Don't commit** unless Sophia asks.
+- **Detail only what's next.** Plan only the section being worked on in depth. Don't flesh out later sections ahead of time; ideas for them go in the project file's **Later** list as one line (see "The section map" in `loop.md`).
+- **Don't commit** unless Sophia asks. At each sign-off, ask her whether to commit the step.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

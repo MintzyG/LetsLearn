@@ -1,7 +1,0 @@
-{
-  "title": "Lorem Alpha",
-  "description": "Placeholder project to show separate roots",
-  "icon": "BookOpen",
-  "root": true,
-  "pages": ["index", "basics", "..."]
-}

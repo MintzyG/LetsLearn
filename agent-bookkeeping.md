@@ -22,6 +22,17 @@ One table per project. The first agent to work on a project adds its table; each
 |---|---|---|---|---|---|---|
 -->
 
+### notwork
+| NN | Section | Writer | Sophia | Verification | Implementation | Writing |
+|---|---|---|---|---|---|---|
+| 00 | Foundations | – | – | – | – | – |
+
 ## Log
 
 <!-- entries go below -->
+
+### notwork / project-file — Interview — 2026-10-20
+- **Did:** interviewed Sophia and wrote `projects/notwork/notwork.md` (approved); created the book root `content/docs/notwork/` with `just new notwork "Notwork"`.
+- **Refinements:** link mechanism discussed at length: TAP rejected (its only peer is the host's own kernel; it can't join a Wi-Fi LAN), TUN rejected (drops Ethernet/ARP). Chosen: AF_PACKET with the machine's MAC and the stack's own IP, a veth pair locally, the real interface for show-offs, and a setup script for kernel interference and offloads. IPv4 and ICMP are separate sections.
+- **Open:** what 01 Setup gives the reader to show off (decide when 01 comes up); the setup script isn't written yet; an L1 acoustic modem is in the Later list, for after the book.
+- **Signed off:** interview agent, after Sophia said done

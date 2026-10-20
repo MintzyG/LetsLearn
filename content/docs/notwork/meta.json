@@ -1,0 +1,6 @@
+{
+  "title": "Notwork",
+  "description": "",
+  "root": true,
+  "pages": ["index", "..."]
+}

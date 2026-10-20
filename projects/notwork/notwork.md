@@ -10,6 +10,8 @@ The reader builds a network stack by hand, in Go, from Ethernet frames (L2) all 
 
 Knows Go (structs, slices, errors, goroutines), but not networks: has used the internet, never looked inside a packet.
 
+- **Go isn't a prerequisite.** The reader doesn't need to know Go already, only to be willing to learn it (to run the tests). The book can be followed in another language, but then the tests and the support code (setup script aside) aren't there for them; the intro says so (decided in the writing pass for the intro, 2026-10-20).
+
 ## How it progresses
 
 - **Bottom up, one protocol at a time.** Each section adds the next protocol on top of the ones before it.
@@ -27,6 +29,7 @@ Not on the main path (for now): IPv6, TLS/HTTPS.
 
 ## Platform and environment
 
+- **Native Linux only.** WSL2 and containers were considered for the intro's requirements and dropped: WSL2 (NAT) and Docker Desktop sit behind a VM, so the stack's frames may not reach the real LAN (2026-10-20).
 - **Linux, AF_PACKET raw sockets.** The stack reads and writes Ethernet frames through an `AF_PACKET` socket ([packet(7)](https://man7.org/linux/man-pages/man7/packet.7.html)). TAP was considered and rejected: its only peer is the host's own kernel ("I thought I talked to the router"), and it can't join a real Wi-Fi LAN (a Wi-Fi client interface can't be bridged).
 - **The machine's MAC, its own IP.** The book isn't about building a NIC: the stack sends with the interface's MAC, but uses its own IPv4 address on the LAN, separate from the host's. The kernel drops packets for an IP that isn't its own, so it doesn't reply with RSTs, duplicate pings or port-unreachables.
 - **Two places to plug in, same code:**
@@ -85,6 +88,8 @@ Scouted up front; the setup script handles what it can, and the material explain
 ## Section map
 
 Fading detail: only the section being worked on is planned in depth, when work reaches it.
+
+- **Book intro** (`content/docs/notwork/index.mdx`): short, memorable, not verbose. **The writing agent drafts the intro and Sophia edits it**; for the chapters it's the opposite (she drafts, the agent gives feedback). Shape: it opens with the context, the journey of this very page load ("when you clicked this page, X, Y, Z happened, and then you got to see it"), then the hook ("ever wondered how all of that works?"), then what you build and done; then *Requirements* (one Linux machine; a network connection, wired or Wi-Fi; a second machine, optional; your phone for the final challenge; no separate *Who it's for*, the hook covers it), *What's in this book* (what each chapter gives you: the idea, what to build, the tests, the show-off, the reference code, challenges and deepenings), *The road* (each chapter with what you can show off at its end), *Not in this book*, *Start here* (00 or 01).
 
 - **00 Foundations** (reading only, skippable): layers and encapsulation; addresses and links (MAC vs IP vs port, local network vs internet, what a router/switch/AP does, Wi-Fi presented as Ethernet); packets on the wire (bytes, network byte order, reading RFC header diagrams, checksums in general); the tools (tcpdump/Wireshark, ip, ethtool). Setup is *not* here.
   - **Size:** medium read, ~1 hour. Four parts, each with a short self-check.

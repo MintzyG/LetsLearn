@@ -1,6 +1,64 @@
 ---
 title: Notwork
-description: 
+description: Build a network stack in Go, from Ethernet frames to HTTP.
 ---
 
-Start here.
+When you clicked the link to this page, your computer asked a DNS server where this site lives. It opened a connection to the server and sent a request for the page. That request was cut into packets, each packet was wrapped in a frame for your router, and router after router passed it across the internet. The page came back the same way, in pieces, and your computer put them back in order. All of that took a fraction of a second, and then you got to see this page.
+
+Ever wondered how all of that works?
+
+In this book, you build it yourself. Notwork is a network stack you write by hand, from Ethernet frames up to HTTP. When it's done, it fetches a real web page from the internet, and it serves a page your phone can load. Your laptop, your router and that server share no code, only the rules. Follow them, and your stack is a peer like any other.
+
+## Requirements
+
+- One Linux machine
+- A network connection, wired or Wi-Fi
+- A second machine (optional, but it makes showing off more fun)
+- Your phone, for the final challenge
+
+The tests and support code are in Go. You can follow the book in another language, but then you're on your own for the tests.
+
+## What's in this book
+
+Each chapter takes one protocol (big ones, like TCP, get a few chapters) and gives you:
+
+- **The idea.** What the protocol is for and how it works, with a link to where it's written down, usually an RFC. You learn from the real spec, not just from the book.
+- **What to build.** What your code must do, in plain words. The book tells you *what* to build, never *how*: shaping the code is your part.
+- **The tests.** They tell you when it works. Run them as you go; when they all pass, you're done.
+- **The show-off.** Then you try it on your real network, against your router, your phone or a real server.
+- **The reference code.** It sits at the end of the chapter, folded away, for when you're done or stuck.
+- **Challenges and deepenings.** Optional extras for when you want more: things to build with what you know now, and ways to dig deeper into the protocol. They come with tests too.
+
+Every chapter ends with something that works. Stop anywhere, and you've still built something real.
+
+## The road
+
+| Chapter | What you can show off |
+|---|---|
+| 00 Foundations | Reading only: RFCs, layers, addresses, and how to read a header diagram |
+| 01 Setup | Your machine, ready: a test network, and a way onto your real one |
+| 02 Ethernet | A frame sniffer on your real interface |
+| 03 ARP | Your router learns where your stack lives |
+| 04 IPv4 | Two copies of your stack exchange packets |
+| 05 ICMP | Your stack answers pings, even from your phone |
+| 06 Routing | You ping 8.8.8.8 through your router |
+| 07 UDP | `nc` on your phone reaches your echo service |
+| 08 DHCP | Your router gives your stack its own address |
+| 09 DNS | Your own `dig` |
+| TCP | A reliable connection, built by hand, over several chapters |
+| HTTP | A client that fetches a real page, and a server your phone's browser loads |
+
+## Not in this book
+
+No IPv6, and no TLS, so no HTTPS. Notwork is a toy that works on the real thing: it follows the happy path, and each chapter says what a real stack does beyond it. It works on most networks, not all of them; some office networks lock things down.
+
+## Start here
+
+<Cards>
+  <Card title="00 Foundations" href="/docs/notwork/00-foundations">
+    New to networks? Start here. Skip it if you already know layers, addresses and byte order.
+  </Card>
+  <Card title="01 Setup" href="/docs/notwork/01-setup">
+    Know the basics? Set up your machine and start building.
+  </Card>
+</Cards>

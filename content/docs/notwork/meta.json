@@ -1,6 +1,6 @@
 {
   "title": "Notwork",
-  "description": "",
+  "description": "Build a network stack in Go, from Ethernet frames to HTTP.",
   "root": true,
   "pages": ["index", "..."]
 }

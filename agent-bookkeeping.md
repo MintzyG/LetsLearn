@@ -27,6 +27,7 @@ One table per project. The first agent to work on a project adds its table; each
 |---|---|---|---|---|---|---|
 | intro | Book intro | – | – | – | – | done |
 | 00 | Foundations | wip | – | done | – | – |
+| 01 | Setup | – | – | – | – | wip (setup page done) |
 
 ## Log
 
@@ -48,4 +49,10 @@ One table per project. The first agent to work on a project adds its table; each
 - **Did:** drafted the book intro `content/docs/notwork/index.mdx` at Sophia's request (she has trouble writing intros; she edited it). Filled `content/docs/notwork/meta.json`'s description. Recorded in `projects/notwork/notwork.md`: the intro's shape, that the writing agent drafts the intro and she drafts the chapters, Go isn't a prerequisite (other languages work, without tests), and native Linux only.
 - **Refinements:** opening reworked to the journey of this page load, then the hook ("Ever wondered how all of that works?"); the history section dropped; "Who it's for" replaced by "Requirements"; "How chapters work" became "What's in this book"; WSL2 and containers dropped (the stack's frames may not reach the real LAN behind a VM).
 - **Open:** "Your phone, for the final challenge" vs. the road map, which uses the phone in 05, 07 and HTTP; 01 Setup's show-off in the road table is a placeholder until 01 is planned; the Start here cards link to `/docs/notwork/00-foundations` and `/docs/notwork/01-setup`, which don't exist yet.
+- **Signed off:** writing agent, after Sophia said done
+
+### notwork / 01-setup — Writing — 2026-10-20
+- **Did:** at Sophia's request, ahead of the 01 material: probed her machine (Docker's ip_forward=1, offloads on wlan0, ufw, NetworkManager) and wrote the readers' setup script `projects/notwork/src/scripts/netsetup.sh` (`setup`/`teardown`, plus `--probe`, `--status`, `--grant`, `--iface`, `--ip`, `--veth-only`; the probe saves to `/var/lib/notwork/probe.json`). Verified it with a one-off root check she ran: the kernel sent redirects and host-unreachables without the blackhole route and stayed silent with it; setup, the quiet test cable, teardown (offloads restored) and idempotence all passed. Drafted the first page of 01, `content/docs/notwork/01-setup/index.mdx` (+ `meta.json`), which `<include>`s the script. Recorded the decisions in `projects/notwork/notwork.md`.
+- **Refinements:** a firewall drop + `send_redirects=0` replaced by a blackhole route for the stack's IP (redirects go out before the FORWARD hook; no nft/iptables dependency). The kernel's end of the test pair moved into its own netns `notwork`, because desktop services (mDNS, LLMNR, SSDP, Steam) chattered on it; the reader's code doesn't change. Tests run with `go test -exec sudo`. One script, not two, at Sophia's request. The page was rewritten to be short and non-technical: readers aren't network people yet; the redirect capture and the technical explanations were dropped from it. Names `nw-kernel`/`nw-stack`/`10.77.0.x` kept.
+- **Open:** the rest of 01 (writer material, tests, AF_PACKET, 01's show-off) isn't planned yet; the 01 section entry in the project file is still a one-liner. Later list: language-agnostic black-box tests.
 - **Signed off:** writing agent, after Sophia said done

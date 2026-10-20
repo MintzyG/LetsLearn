@@ -1,0 +1,91 @@
+---
+title: Setup
+description: Get your machine ready to build a network stack.
+---
+
+{/* DRAFT by the writing agent, at Sophia's request. She rewrites it in her own words. */}
+
+Before you build anything, your machine needs a little preparation. One script does it all, and undoes it all when you're done.
+
+## What you need
+
+- Linux, and `sudo`
+- [Go](https://go.dev/doc/install), to run the tests
+- `ip`, `ethtool` and `ping`. Most distributions come with them.
+
+## Why a script?
+
+Your stack will send and receive network traffic itself, byte by byte. But Linux has its own network stack running on the same machine, and if you leave it alone, it gets in your stack's way: it answers traffic meant for yours, and it reshapes packets before your stack sees them.
+
+<Idea>Your stack shares the machine with Linux. The script makes room for yours.</Idea>
+
+It sets up two places for your stack to run:
+
+- **A test network inside your machine.** A virtual cable, with your stack on one end and Linux on the other. The tests run here.
+- **Your real network**, Wi-Fi or Ethernet. This is where you show off to your router, your phone and the internet. Your stack gets its own address here, next to your computer's.
+
+## Get the script
+
+Save it as `netsetup.sh` next to your code, and make it runnable with `chmod +x netsetup.sh`.
+
+<Accordions>
+  <Accordion title="netsetup.sh">
+    <include lang="bash" meta='title="netsetup.sh"'>../../../../projects/notwork/src/scripts/netsetup.sh</include>
+  </Accordion>
+</Accordions>
+
+## Use it
+
+<Steps>
+<Step>
+
+### Set up
+
+Run `sudo ./netsetup.sh setup`. It prints each thing it does, and ends with `Done`.
+
+</Step>
+<Step>
+
+### Note your stack's address
+
+Run `./netsetup.sh --status`. Look for `stack_ip`: that's your stack's address on your real network. You'll need it when you show off.
+
+</Step>
+<Step>
+
+### Tear it down
+
+When you're done for the day, run `sudo ./netsetup.sh teardown`. Your machine goes back to how it was. Rebooting does the same.
+
+</Step>
+</Steps>
+
+<Aside type="tip" title="Moved to another network?">
+  Just run setup again. It notices the new network and picks a new address for your stack.
+</Aside>
+
+## Run the tests
+
+Your stack reads and writes raw network traffic, which normal programs aren't allowed to do. So run the tests with sudo:
+
+<Terminal command="go test -exec sudo ./..." />
+
+Go builds the tests as you, and runs only the finished test program with sudo.
+
+<Accordions>
+  <Accordion title="What exactly does the script change?">
+    - It creates the virtual cable. Its two ends are called `nw-stack` (yours) and `nw-kernel` (Linux's). Linux's end is kept apart from the rest of your computer, so other programs don't chatter on it.
+    - It picks a free address for your stack on your real network, and tells Linux to ignore traffic for that address.
+    - It turns off a few shortcuts where your network card reshapes traffic, so your stack sees packets the way they really travel.
+
+    Nothing it does survives a reboot.
+  </Accordion>
+</Accordions>
+
+<DoneWhen
+  items={[
+    'sudo ./netsetup.sh setup ends with Done',
+    "You know your stack's address",
+    'sudo ./netsetup.sh teardown puts everything back',
+  ]}
+/>

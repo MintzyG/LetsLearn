@@ -22,8 +22,8 @@ Chapters **describe** what to build; they don't show it. Readers implement it th
 |---|---|
 | Learning material (`projects/<name>/material/`, as HTML pages with embedded visuals; see "Material format" in `loop.md`), including the spec in prose | Implementation code for a section. Not even "just a sketch" or pseudocode that is really code |
 | Explanatory visuals for her learning version of the material | Stubs: signatures, placeholder bodies, skeleton files. Shaping the code is part of what she learns |
-| Tests and fixtures her code must pass | Chapters in `content/docs/<name>/` (the book is hers), including the visuals in them |
-| Reviews (`projects/<name>/reviews/`) | The summary/reference blocks in chapters |
+| Tests and fixtures her code must pass | Chapters in `content/docs/<name>/` (the book is hers), including the visuals in them, except a passage she explicitly asks the writing agent to draft, which she then rewrites |
+| Corrections to the material and tests, with her OK (verification and implementation passes) | The summary/reference blocks in chapters |
 | Entries in `agent-bookkeeping.md` and `STUCK.md` | Output visuals (of the learner's code running) |
 | Site infrastructure (Next.js, Fumadocs, justfile), only when asked | Presentation visuals (for her videos) |
 | | Anything that solves the task for her |
@@ -44,7 +44,7 @@ This applies in conversation too, not just in files. Sophia wants to build it he
 - **Explaining concepts is always fine.** How a protocol works, what a field means, what an error message means. Explaining how *her* solution should be written is not.
 - **Only if she explicitly asks for the answer** may you give it. Even then, confirm first that she's sure.
 
-**Every time she gets stuck, log it in `STUCK.md`**: what confused her, where, and which nudges you gave. It is a signal that the material needs refining (see `loop.md`, step 3).
+**Every time she gets stuck, log it in `STUCK.md`**: what confused her, where, and which nudges you gave. It is a signal that the material needs refining (see `loop.md`, steps 2 and 3).
 
 ## How the work flows
 
@@ -52,11 +52,11 @@ The full workflow is in **`loop.md`**. Read it before working on any section. In
 
 0. **New project:** before anything else, an agent **interviews Sophia** about how she wants the book structured and how it should progress (e.g. one layer at a time, feature by feature), then drafts the project file from her answers and gets her approval. Never write a project file without asking. See "Starting a new project" in `loop.md`.
 1. **Writer agent** proposes an outline, waits for Sophia's OK, then writes the learning material (concepts, sources, spec, the task described in prose, tiered hints, verification against chosen oracles, out-of-scope notes) and the test suite.
-2. **Sophia** implements the section and writes the chapter.
-3. **Whoever is with her** logs each time she gets stuck in `STUCK.md`. The **writer** refines the material and tests from those entries, until she says **done**, then signs off in `agent-bookkeeping.md`.
-4. Her code becomes the chapter's summary block; her codebase is the reference.
-5. **Reviewer agent** (not necessarily the writer) reviews the step and suggests changes, each with a confidence score from 1 to 5. Sophia decides what to apply. When she says **done**, the reviewer signs off.
-6. Next section.
+2. **Sophia** reads the material, answers its self-checks and implements the section, using the implementation check's Verify and Help buttons. Every time she gets stuck it lands in `STUCK.md`, from the checkers or from whoever is with her.
+3. **Verification agent** works through the section's `STUCK.md` entries with her, one correction to the material or tests at a time, applying only what she approves. Skipped if there are no entries.
+4. **Implementation agent** (sections with code) checks her implementation, gives feedback without solving, and corrects the material and tests where they were wrong.
+5. **Writing agent** helps her write the chapter: feedback on her drafts, and drafts of a passage only when she asks. Her code becomes the chapter's summary block; her codebase is the reference.
+6. Each agent signs off in `agent-bookkeeping.md` when she says its pass is **done**. Next section.
 
 Every book starts with a skippable **section 00 (Foundations)**. It is reading only, with no code and no tests, and lays the foundations of the book's subject (not programming basics). Sections never reach ahead: each one builds only on what came before. See "Section 00" in `loop.md`.
 
@@ -73,10 +73,10 @@ You will usually be spawned for **one section** without the history of earlier c
 loop.md                   the workflow
 agent-bookkeeping.md      shared log + status tables
 STUCK.md                  shared log of where Sophia got stuck
-projects/<name>/          per-project workspace: <name>.md, material/, answers/, reviews/, src/ (all code)
+projects/<name>/          per-project workspace: <name>.md, material/, answers/, src/ (all code)
 projects/theme.css        the Mint theme's colors and fonts, for material and visuals
 projects/material.css|js  shared style and script for every material page
-scripts/                  the material server (answer checking)
+scripts/                  the material server (answer checking, implementation checks)
 content/docs/<name>/      the published book (meta.json with "root": true = its own sidebar)
 app/, components/, lib/   the Fumadocs (Next.js) site
 fumadocs-studio.config.ts the live editor's config
@@ -105,6 +105,7 @@ pnpm is the package manager.
 - **Verify against an oracle** (real world, interop, reference swap, golden data, invariants, ...; see `loop.md`). Use the real world, as early as possible, when it's available. If no oracle fits, suggest one to Sophia.
 - **Cite sources** (Wikipedia, specs/RFCs, official docs, man pages) for every non-trivial claim.
 - **Keep everything clean and readable.** Readers will study it.
+- **Record decisions straight away.** When Sophia decides something, for the whole book or for one section, write it into the project file in the same turn, not at the end of the conversation. A decision that lives only in the chat is lost to the next agent. During the interview, keep the project file as a draft and add each answer as it comes (see "Starting a new project" in `loop.md`).
 - **Detail only what's next.** Plan only the section being worked on in depth. Don't flesh out later sections ahead of time; ideas for them go in the project file's **Later** list as one line (see "The section map" in `loop.md`).
 - **Don't commit** unless Sophia asks. At each sign-off, ask her whether to commit the step.
 

@@ -41,16 +41,16 @@ th { color: var(--text-2); font-weight: 600; }
 
 /* Self-checks: the questions are visible, the answer box follows them (added by
    material.js), and the reference answers are folded underneath. */
-section.self-check {
+section.self-check, section.impl-check {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 16px;
   margin: 24px 0 16px;
   background: color-mix(in srgb, var(--panel) 50%, transparent);
 }
-section.self-check > :last-child { margin-bottom: 0; }
+section.self-check > :last-child, section.impl-check > :last-child { margin-bottom: 0; }
 .self-check-title { font-family: var(--font-mono); font-weight: 600; color: var(--accent); margin-bottom: 8px; }
-section.self-check details { background: var(--surface); }
+section.self-check details, section.impl-check details { background: var(--surface); }
 
 /* Folded blocks: reference answers, tiered hints. */
 details {
@@ -112,25 +112,28 @@ main > h1:first-child::before {
   mask-image: radial-gradient(ellipse 90% 110% at 85% 0%, #000 25%, transparent 100%);
 }
 
-/* Answer box before each self-check: write your answer, Claude checks it.
-   Added by material.js; works when the page is served by `just material`. */
-form.answer { margin: 0 0 12px; }
-form.answer label { display: block; font-family: var(--font-mono); font-size: 14px; color: var(--text-2); margin-bottom: 6px; }
-form.answer textarea {
+/* Answer boxes in each self-check: one under each question, and one Check button for
+   all of them. Added by material.js; checking works when served by `just material`. */
+/* Laid out like a written test: questions, parts and boxes all start at the left edge. */
+section.self-check ol { padding-left: 0; list-style-position: inside; }
+section.self-check ol ol { list-style-type: lower-alpha; margin: 6px 0 0; }
+textarea.answer-box {
   display: block;
   width: 100%;
-  min-height: 110px;
+  min-height: 72px;
   resize: vertical;
-  padding: 10px 12px;
+  margin: 6px 0 12px;
+  padding: 8px 10px;
   font: 15px/1.5 var(--font-sans);
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-form.answer textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-form.answer .row { display: flex; align-items: center; gap: 12px; margin-top: 8px; font-size: 14px; color: var(--text-2); }
-form.answer button {
+textarea.answer-box:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.answer { margin: 0 0 12px; }
+.answer .row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-2); }
+.answer button {
   font: 500 14px var(--font-sans);
   padding: 6px 16px;
   border-radius: 999px;
@@ -139,7 +142,12 @@ form.answer button {
   color: var(--surface);
   cursor: pointer;
 }
-form.answer button:disabled { opacity: 0.6; cursor: progress; }
+.answer button:disabled { opacity: 0.6; cursor: progress; }
+.answer button.secondary { background: none; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.answer .help { margin-top: 12px; }
+.feedback.pass { border-color: var(--good); }
+.feedback.pass .verdict { color: var(--good); }
+.feedback.help .verdict { color: var(--accent); }
 .feedback {
   margin-top: 10px;
   padding: 10px 14px;

@@ -5,9 +5,9 @@ The log of the loop (see `loop.md`), shared by all projects. Each agent appends 
 ## Entry format
 
 ```
-### <project> / NN-slug — <Writer | Reviewer> — YYYY-MM-DD
+### <project> / NN-slug — <Writer | Verification | Implementation | Writing> — YYYY-MM-DD
 - **Did:** what you produced or changed (files)
-- **Refinements:** where Sophia got stuck and what changed in material/tests (writer), or suggestions made and their confidence scores (reviewer)
+- **Refinements:** where Sophia got stuck and what changed in material/tests (corrections she approved, feedback given, or how the chapter was helped)
 - **Open:** anything left unresolved or deferred to a later section
 - **Signed off:** <role> agent, after Sophia said done
 ```
@@ -18,8 +18,8 @@ One table per project. The first agent to work on a project adds its table; each
 
 <!--
 ### <project>
-| NN | Section | Writer | Sophia | Reviewer |
-|---|---|---|---|---|
+| NN | Section | Writer | Sophia | Verification | Implementation | Writing |
+|---|---|---|---|---|---|---|
 -->
 
 ## Log

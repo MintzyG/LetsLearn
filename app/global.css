@@ -96,6 +96,11 @@ html > body[data-scroll-locked] {
   max-width: 46rem;
 }
 
+/* The previous/next cards line up with the text column above them. */
+.book-footer {
+  max-width: 46rem;
+}
+
 .book-body.prose > p:first-child {
   font-size: 1.1875rem;
   line-height: 1.7;

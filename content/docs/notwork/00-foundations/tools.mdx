@@ -1,0 +1,74 @@
+---
+title: The tools
+description: What tcpdump, Wireshark, ip and ethtool are for, and the tools that will test your stack later.
+---
+
+{/* DRAFT by the writing agent, at Sophia's request. She rewrites it in her own words. */}
+
+You won't use any of these yet. This is what each one is for, so you recognize them when chapter 01 gets you set up. They all come with Linux, or are one package install away.
+
+## tcpdump and Wireshark: see the traffic
+
+**tcpdump** captures the frames passing through an interface and prints them, decoded, one line each <Cite href="https://www.tcpdump.org/manpages/tcpdump.1.html">tcpdump(1)</Cite>. It can also save them to a file. **Wireshark** does the same in a window, and shows every field of every header with its bytes <Cite href="https://www.wireshark.org/docs/wsug_html_chunked/">Wireshark guide</Cite>.
+
+They decode traffic on their own, without your code. So when your stack thinks it sent something, they show you what really went out.
+
+<Idea>Your code says what it meant to send. tcpdump shows what it really sent.</Idea>
+
+A few things worth knowing about tcpdump:
+
+- **`-i` picks the interface** to listen on, as in `-i wlan0`. Without it, tcpdump picks one for you, and it may not be the one you want.
+- **`-e` adds the Ethernet header**, MAC addresses included. tcpdump leaves it out by default. Don't mix it up with **`-x`**, which adds the raw bytes in hex.
+- **A filter** such as `arp` or `tcp port 80` keeps only the traffic you care about <Cite href="https://www.tcpdump.org/manpages/pcap-filter.7.html">pcap-filter(7)</Cite>. Your network is noisier than you'd think.
+- **It needs `sudo`**, like everything that sees raw frames.
+
+A capture shows frames the way Linux sees them. On Wi-Fi, that means Ethernet. And it sees them where the kernel meets the driver, *before* the network card. That matters for checksums, below.
+
+## ip: interfaces, addresses and routes
+
+**ip** shows and changes Linux's network settings <Cite href="https://man7.org/linux/man-pages/man8/ip.8.html">ip(8)</Cite>. It has one subcommand for each kind of thing:
+
+| Command | Shows |
+|---|---|
+| `ip link` | the interfaces (`lo`, `wlan0`, `eth0`, ...), their MAC addresses, and whether they're up |
+| `ip addr` | the IP addresses on each interface, with their prefix lengths |
+| `ip route` | the routing table, including the default gateway: `default via 192.168.1.1` |
+| `ip neigh` | which MAC goes with which IP, for the machines the kernel knows on each link |
+
+<Aside type="tip" title="Looking for the gateway?">
+  It's in `ip route`, not `ip addr`. The gateway isn't one of your addresses: it's where your machine sends everything that isn't local, and that's a route.
+</Aside>
+
+## ethtool: the network card's settings
+
+**ethtool** shows and changes the settings of the driver and the network card <Cite href="https://man7.org/linux/man-pages/man8/ethtool.8.html">ethtool(8)</Cite>. For this book, what matters are the <Term def="Jobs the kernel hands to the network card, or does in bulk, to save CPU time.">offloads</Term>. `ethtool -k` shows them, and `ethtool -K` changes them.
+
+The best known is **checksum offload**: the kernel leaves outgoing checksums blank, and the card fills them in just before sending. But a capture sees the frame *before* it reaches the card. So tcpdump shows your machine's own packets with "wrong" checksums, even though what went out was right.
+
+Other offloads merge several incoming packets into one big one before any software sees it. Both get in the way of a stack built by hand. The setup script in chapter 01 turns them off while you work.
+
+## What you'll meet later
+
+These are the kernel's own tools. In later chapters they talk to your stack, and they must accept what it sends: they're how you'll know it works.
+
+| Tool | What it does |
+|---|---|
+| `ping` | asks a machine "are you there?" and times the reply |
+| `arping` | like ping, one layer down: asks the local network "who has this IP?" |
+| `dig` | asks a DNS server what a name resolves to |
+| `nc` | opens a plain TCP or UDP connection, and connects your terminal to it |
+| `curl` | fetches a URL, like a web page |
+
+<Check question="Which tool, and roughly which command? (a) Find your default gateway. (b) See your Wi-Fi interface's MAC. (c) Watch the frames on wlan0, with their MACs. (d) Check whether checksum offload is on.">
+  (a) `ip route`, the `default via` line. (b) `ip link`, the address next to `link/ether` for `wlan0`. (c) `tcpdump -i wlan0 -e`, or Wireshark. (d) `ethtool -k` on the interface, the checksum lines.
+</Check>
+
+<Check question="tcpdump shows your machine's own packets with wrong checksums, yet the other side accepts them. Who fills the checksums in?">
+  The network card. With checksum offload, the kernel leaves them blank, and the card fills them in just before sending.
+</Check>
+
+<Check question="And why does tcpdump see them as wrong?">
+  It captures the frame before it reaches the card, so before the checksum is filled in. What goes out has the right one.
+</Check>
+
+Next, [chapter 01](/docs/notwork/01-setup) gets your machine ready, so a program of your own can send and receive raw frames.

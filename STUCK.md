@@ -55,3 +55,26 @@ Log it as it happens, not afterwards from memory. Don't record the answer itself
   3. 1a, 1b and 1d are right. In 1c you have the right tool and the -e flag, but you left out which interface to watch. Check how the section's example names it, and what flag tells tcpdump where to listen. In 2 you correctly say the card fills in the checksums. You haven't yet explained why tcpdump shows them as wrong. Where does the capture tap the frame, compared with where the card does its work?
   → answered correctly on try 4
 - **Material fix:** (verification pass, 2026-10-20) 1a and the -x/-e mix-up in 1c were her slips; the ip table and the tcpdump bullets are clear. 1c: the checker wanted `-i wlan0`, which the material never taught, so `-i` is now a tcpdump bullet. 2: "What's going on?" was graded as two parts, so the question is now split into 2a (who fills in the checksums) and 2b (why tcpdump sees them as wrong).
+
+### notwork / 01-setup — 2026-10-20
+<!-- auto-check: notwork/01-setup/2-opening-the-socket/2026-10-20 -->
+- **Stuck on:** She sees that protocol 0 stops early frames but doesn't say they would come from other interfaces, because the socket isn't yet bound to a single interface.
+- **Where:** self-check of "2. Opening the socket" (material)
+- **Nudges:** from the automatic answer check
+  1. 1) and 3) are right. 4) is right too: you named both the polling and the deadlines. For 2), you've got the "sneaking in" part, but think about when it happens. With ETH_P_ALL at socket time, the socket starts receiving immediately, and the bind comes later. Where would those early frames come from, since the bind hasn't chosen an interface yet? Re-read step 1 and the packet(7) quote.
+  → answered correctly on try 2
+- **Material fix:** none needed (verification pass, 2026-10-20). Both the explanation of step 1 and the code's comment say the socket would receive from every interface until the bind, so it was her slip, and she got it on try 2.
+
+### notwork / 01-setup — 2026-10-20
+<!-- impl-check: notwork/01-setup/4-task/2026-10-20 -->
+- **Stuck on:** She feels this section expects her to write socket code without having been taught basic networking, and she doesn't know where to start with Conn and Open.
+- **Where:** implementation check of "4. Task" (material)
+- **Nudges:** from the automatic implementation check and help button
+  1. (help) asked "Look this section is about sockets and expecting me to implement it on my own? when the book is for people who dont know basic networking, this is a severe lapse in the writer's agent judgement": Fair point, I'll flag to the author that sockets are a big jump here. You're not starting from zero, since Open wraps your section 2 code: what does that code do, and which parts of it would a Conn need to keep?
+- **Material fix:** (verification pass, 2026-10-20) the material was at fault. The snippet used `ifi` without showing where it came from and stopped before `Open` returned, and what was left (Conn and the four methods) was Go plumbing around an `*os.File`, not networking, for readers who don't need to know Go. Section 2 is now "The link package": the whole `link.go` (lookup, Conn, Open, the four methods) shown and explained. The reader types it in and runs the tests, and only the demo `cmd/raw` is theirs (the implementation check now points at it). The deepening (recvfrom/RawConn) was dropped as socket internals, along with `deepening_test.go`. Decision recorded in the project file.
+
+### notwork / 01-setup — 2026-10-20
+- **Stuck on:** Section 3 was unreadable: its `link` spec only repeated section 2 (once the package was shown), and the demo spec (`raw -i IFACE`, `-send TEXT`) meant nothing to her. Making readers who aren't confident in Go parse command-line flags was too much.
+- **Where:** "3. Spec" (material), raised in conversation during the verification pass
+- **Nudges:** none (a material problem, not hers)
+- **Material fix:** (verification pass, 2026-10-20) section 3 is now "The demo: `cmd/raw`", only the demo, in plain words: where the file lives, then what the program does in order (two constants for interface and text, find your MAC, open, build and send one frame (a byte table: to, from, kind, message), then hex-dump every arriving frame, with a sample of the output). No flags. The show-off in section 5 and the project file follow it.

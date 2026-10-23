@@ -1,0 +1,90 @@
+---
+title: Layers and encapsulation
+description: Why a network is built in layers, and how each layer wraps the one above.
+---
+
+{/* DRAFT by the writing agent, at Sophia's request. She rewrites it in her own words. */}
+
+Getting a web page from a server to your laptop means solving several very different problems at once:
+
+- getting bits from one device to the next, across a cable or through the air;
+- getting a packet from your machine to one on the other side of the planet, across dozens of networks that know nothing about each other;
+- making a stream of bytes arrive complete and in order, even though packets get lost, duplicated and reordered on the way;
+- agreeing on what the bytes mean ("give me the page `/`").
+
+## Why layers
+
+Networks solve each problem in its own **layer**. A layer uses the service of the layer below it, offers a service to the layer above, and doesn't care how the layers below do their job.
+
+<Idea>Each layer only knows the one right below it.</Idea>
+
+TCP, for example, only needs IP to "deliver this packet to that address, probably". Whether IP does that over Wi-Fi, fiber or a cable is none of TCP's business: TCP never sees it. That's why the same TCP code runs over every kind of link. It's also why you can build a stack one layer at a time, which is what this book does.
+
+## The layers, and their numbers
+
+The internet's layers come from the TCP/IP model, written down in RFC 1122 <Cite href="https://www.rfc-editor.org/rfc/rfc1122#section-1.1.3">RFC 1122, 1.1.3</Cite>. It has four layers. An older model, OSI, has seven, and it gave the layers the numbers everyone still uses: "an L2 switch", "an L3 router" <Cite href="https://en.wikipedia.org/wiki/OSI_model">OSI model</Cite>. So you'll hear both:
+
+| Number | Layer | Its job | Examples | Its unit |
+|---|---|---|---|---|
+| L7 | Application | What the bytes mean | HTTP, DNS, DHCP | message |
+| L4 | Transport | Which program on the host, and reliability if wanted | TCP, UDP | segment (TCP), datagram (UDP) |
+| L3 | Internet | Which host, anywhere, and how to get there | IPv4, plus ICMP as its helper | packet |
+| L2 | Link | Which device on this one local network | Ethernet, Wi-Fi | frame |
+| L1 | *below the model* | Turning bits into signals: voltages, light, radio | your network card | bits |
+
+<Aside title="Where did L5 and L6 go?">
+  OSI has two more layers between transport and application. The internet never used them separately: TCP/IP folds them into the application. That's why the numbers jump from L4 to L7.
+</Aside>
+
+People often say "packet" for any of these units. This book uses the precise name when it matters.
+
+## Encapsulation
+
+Each layer does its job by putting its own <Term def="A few bytes of control information (addresses, lengths, flags) that a layer adds in front of what it carries.">header</Term> in front of whatever the layer above handed it. The same layer on the other side reads that header. What's behind it, the layer doesn't look at: to it, that's just the <Term def="The bytes a layer carries for the layer above, without looking inside them.">payload</Term>. Some layers also add a **trailer** after the payload. Ethernet does: a checksum of the whole frame.
+
+Wrapping like this is called **encapsulation** <Cite href="https://en.wikipedia.org/wiki/Encapsulation_(networking)">Encapsulation</Cite>. An HTTP request leaving your laptop gets wrapped like this:
+
+```text
+                                      | HTTP request |
+                         | TCP header | HTTP request |
+             | IP header | TCP header | HTTP request |
+| Eth header | IP header | TCP header | HTTP request | Eth trailer |
+```
+
+The last line is what goes onto the link: one run of bytes, outermost header first.
+
+{/* Sophia: the material's step-through visual (material/00-foundations/visuals/encapsulation.html) could replace this text diagram, if you want it in the book. */}
+
+## Every header says what's inside
+
+The receiver unwraps the frame in the opposite order. But how does it know what's inside each layer? It doesn't guess: **every header has a field that names what it carries.**
+
+- The Ethernet header has an **EtherType**: `0x0800` means an IPv4 packet is inside, `0x0806` means ARP.
+- The IPv4 header has a **protocol number**: 6 is TCP, 17 is UDP, 1 is ICMP.
+- The TCP or UDP header has a **destination port**, which says which program gets the data.
+
+Picking the next handler from a field like this is called <Term def="Choosing which code handles the payload, based on a field in the header.">demultiplexing</Term>. It's how one link carries many protocols, and one machine runs many programs. The numbers are assigned centrally, by the IEEE for EtherTypes and by IANA for protocol numbers and ports, so every stack agrees on them <Cite href="https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml">IANA protocol numbers</Cite>.
+
+## Where Notwork sits
+
+Normally, all of this lives in your operating system. A program like `curl` writes HTTP bytes. The kernel's TCP, IP and Ethernet code wraps them, and the network card's driver hands the frame to the hardware.
+
+Notwork takes the kernel's place, **from L2 up**. Your program reads and writes whole Ethernet frames, and every header in them is yours to build and to read.
+
+Below you, nothing changes. The driver and the network card still do L1: they put your frames on the cable or into the air. They also add and check the Ethernet trailer, so you never deal with it.
+
+<Check question="Your browser sends an HTTP request over a wired cable. Which headers wrap the HTTP bytes, from the first byte on the cable inwards?">
+  Ethernet, then IPv4, then TCP, then the HTTP bytes. Ethernet also adds a trailer, a checksum, after everything else.
+</Check>
+
+<Check question="A receiver has just read an Ethernet header. How does it know whether the rest goes to its IPv4 code or its ARP code?">
+  From the EtherType field: `0x0800` means IPv4, `0x0806` means ARP. Every header has a field like this that names what it carries.
+</Check>
+
+<Check question="Why can the same TCP code run over Wi-Fi, a cable and fiber?">
+  Because TCP only relies on IP's service: deliver this packet to that address. How the link below IP works is IP's concern, and TCP never sees it.
+</Check>
+
+<Check question="Which layers does Notwork take over, and what stays with the driver and the network card?">
+  Notwork takes over everything from L2 up: it builds and reads every header, from Ethernet inwards. The driver and the card keep L1, putting frames on the link, and they handle the Ethernet trailer.
+</Check>

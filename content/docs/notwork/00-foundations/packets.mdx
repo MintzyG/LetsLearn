@@ -1,0 +1,125 @@
+---
+title: Packets on the wire
+description: Bytes, byte order, how to read a header diagram, and what checksums are for.
+---
+
+{/* DRAFT by the writing agent, at Sophia's request. She rewrites it in her own words. */}
+
+## A packet is a byte slice
+
+To your code, a frame is nothing more than a run of bytes: in Go, a `[]byte`. A protocol defines a **layout**: this field is at that offset, and it's so many bits wide. Reading a packet means reading each field from its offset. Building one means writing each field there.
+
+Most fields are whole bytes, or 2 or 4 bytes. Some are smaller: a 4-bit number, a single flag bit. Those share a byte with their neighbors, so you'll pick bits out of a byte with shifts and masks.
+
+Offsets count from 0. A 20-byte header covers offsets 0 to 19, and its payload starts at offset 20: **the payload's offset is the header's length.**
+
+Headers come in two kinds:
+
+- **Fixed-length** headers, like Ethernet's, always have the same size.
+- **Variable-length** headers end with optional extras, called **options**, and have a length field that says where the header ends. To keep things aligned, these lengths often count in 32-bit words, not bytes, and the options are **padded** with zeros up to a whole word.
+
+## Network byte order
+
+A 16-bit number takes two bytes. Which one comes first? There are two conventions <Cite href="https://en.wikipedia.org/wiki/Endianness">Endianness</Cite>:
+
+- **Big-endian**: the most significant byte first. `0x01BB` is sent as `01 BB`, the way you'd write it.
+- **Little-endian**: the least significant byte first. `0x01BB` is stored as `BB 01`.
+
+Internet protocols are all big-endian, which is why big-endian is also called **network byte order** <Cite href="https://www.rfc-editor.org/rfc/rfc791#appendix-B">RFC 791, appendix B</Cite>. Your CPU almost certainly works the other way: x86 is little-endian, and so is ARM as Linux normally runs it.
+
+That makes byte order a classic network bug. Copy two bytes from a packet straight into a number in your CPU's order, and `01 BB` reads as `0xBB01`. Nothing complains: you just get the wrong number.
+
+<Idea>Byte order is about how a number is laid out in bytes, never about the number itself.</Idea>
+
+A field's value is what the protocol means by its bytes, and the protocol says big-endian. Once your code has read it, the CPU stores it however it likes, and you never have to think about that. Single bytes have no byte order, and a MAC or IP address is a sequence of bytes, read in the order it comes.
+
+## Reading a header diagram
+
+RFCs draw headers in a standard text format. Here is the first row of one, for a made-up protocol:
+
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version| HdrLen|U|A|F| Reserved|         Total Length          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+How to read it:
+
+- **The ruler on top counts bits**, 0 to 31, in two rows: the tens digit above the units digit. Each `-+` below it is one bit.
+- **Each row is 32 bits, so 4 bytes.** Row 0 is bytes 0 to 3, row 1 is bytes 4 to 7, and so on.
+- **Bit 0 is the most significant bit** of the first byte. So `Version`, in bits 0 to 3, is the *high* four bits of byte 0, and `HdrLen`, in bits 4 to 7, is the low four.
+- **A field's width is its number of bits.** A field can sit inside a byte, fill several bytes, or fill several rows.
+- **Fields of several bytes are in network byte order.**
+- **Options** come after the fixed rows, and a length field gives their size. **Reserved** bits are unused for now: send zeros, and ignore them when you receive them.
+
+Here is the whole made-up header. It doesn't exist: it's built to have every feature you'll meet in real ones.
+
+<Bitfield
+  fields={[
+    { name: 'Version', bits: 4 },
+    { name: 'HdrLen', bits: 4, highlight: true },
+    { name: 'U', bits: 1 },
+    { name: 'A', bits: 1 },
+    { name: 'F', bits: 1 },
+    { name: 'Reserved', bits: 5 },
+    { name: 'Total Length', bits: 16, highlight: true },
+    { name: 'Sequence Number', bits: 32 },
+    { name: 'Sender ID', bits: 16 },
+    { name: 'Checksum', bits: 16 },
+    { name: 'Opt Type', bits: 8 },
+    { name: 'Opt Len', bits: 8 },
+    { name: 'Opt Value', bits: 8 },
+    { name: 'Padding', bits: 8 },
+  ]}
+  caption="The made-up toy header, in the same layout as an RFC diagram."
+/>
+
+In the toy header, **`HdrLen` counts 32-bit words**, and **`Total Length` counts bytes**, the header and the payload together. And here is one, as bytes:
+
+<HexDump
+  bytes="24 60 01 14 00 01 e2 40 13 37 9c 4e 03 03 07 00"
+  ranges={[
+    { start: 0, length: 1, label: 'Version 2, HdrLen 4 (4 words = 16 bytes)' },
+    { start: 1, length: 1, label: 'Flags: A and F on, the rest 0' },
+    { start: 2, length: 2, label: 'Total Length 0x0114' },
+    { start: 4, length: 4, label: 'Sequence Number 0x0001E240' },
+    { start: 8, length: 2, label: 'Sender ID 0x1337' },
+    { start: 10, length: 2, label: 'Checksum 0x9C4E' },
+    { start: 12, length: 3, label: 'Option: type 3, length 3, value 7' },
+    { start: 15, length: 1, label: 'Padding' },
+  ]}
+/>
+
+Byte `24` holds two fields: its high four bits are `Version` (2), its low four are `HdrLen` (4). The header is 4 words, so 16 bytes long, and the payload starts at offset 16.
+
+## Checksums
+
+Bits get flipped: radio noise, a bad cable, a buggy device. A <Term def="A small value computed from the bytes of a packet, so the receiver can tell if they were damaged on the way.">checksum</Term> lets the receiver notice. The sender computes a small value from the bytes it sends, and puts it in the packet. The receiver computes the same value from what it got, and compares. If they differ, the data was damaged, and the receiver **drops the packet**. Getting the data again is somebody else's job: TCP resends, UDP doesn't care <Cite href="https://en.wikipedia.org/wiki/Checksum">Checksum</Cite>.
+
+What a checksum can't do:
+
+- **Repair data.** It only says "damaged" or "probably fine".
+- **Catch every error.** Simple checksums miss some errors, like two that cancel out. Stronger ones, like a CRC, miss far fewer.
+- **Stop tampering.** Whoever changes the data can compute a new checksum. Protecting against an attacker takes cryptography, not a checksum.
+
+Several layers have their own. Ethernet ends every frame with a 4-byte checksum, the **frame check sequence** (FCS). The network card computes and checks it, and drops bad frames before any software sees them. So you never handle the FCS: frames reach you without it.
+
+Some of the headers you'll build have a checksum field of their own, which your code does compute. Each chapter explains its algorithm when it first comes up.
+
+<Check question="A 16-bit field arrives as the two bytes 01 BB. What's its value, and what would you get reading the bytes in an x86 CPU's own order? Answer in hex.">
+  Its value is `0x01BB`: network byte order is big-endian, most significant byte first. An x86 CPU is little-endian, so reading the bytes in its own order gives `0xBB01`, the wrong number.
+</Check>
+
+<Check question="In a header diagram, a field takes bits 4 to 7 of the first row. Which byte is it in, and which part of that byte?">
+  Byte 0, in its low four bits. Bit 0 is the most significant, so bits 0 to 3 are the high half of the byte and bits 4 to 7 the low half.
+</Check>
+
+<Check question="In the toy header, HdrLen is 6 and Total Length is 100. How long is the header, and how long is the payload?">
+  `HdrLen` counts 32-bit words, so the header is 6 × 4 = 24 bytes. `Total Length` counts the header and the payload in bytes, so the payload is 100 − 24 = 76 bytes, starting at offset 24.
+</Check>
+
+<Check question="The checksum in one of your packet's headers doesn't match. What does your code do, and why can't a checksum stop someone changing the packet on purpose?">
+  It drops the packet; getting the data again, if anyone does, is a higher layer's job. A checksum isn't secret: whoever changes the data can compute the new checksum and write it in. It only catches accidents.
+</Check>

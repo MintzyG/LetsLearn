@@ -22,7 +22,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const markdownUrl = basePath + getPageMarkdownUrl(page).url;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage toc={page.data.toc} full={page.data.full} footer={{ className: 'book-footer' }}>
       <header className="book-header">
         <DocsTitle className="font-display text-[clamp(2.75rem,6vw,4rem)] leading-[1.02] font-normal tracking-tight">
           {page.data.title}

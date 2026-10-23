@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 Setup · Notwork</title>
+<link rel="stylesheet" href="../../../material.css">
+<script src="../../../material.js" defer></script>
+</head>
+<body>
+<main>
+
+<h1>01 Setup</h1>
+
+<p>This section is still setup. By its end, your program can take whole frames off a cable and put whole frames back on, as raw bytes. That's the floor every later section stands on, starting with Ethernet in 02. Sockets aren't what this book is about, so this section gives you the code: the whole <code>link</code> package is shown and explained line by line. You type it in, make sure you understand it, prove it works with the tests, and then write a small demo of your own that dumps and sends raw frames. Reading takes about 20 minutes.</p>
+
+<p>First, run the setup page's script (<code>sudo ./netsetup.sh setup</code>). You need its test cable here. Its two ends are <code>nw-stack</code>, which is yours, and <code>nw-kernel</code> (<code>10.77.0.1</code>), which belongs to Linux and lives in the network namespace <code>notwork</code>.</p>
+
+<!-- ============================================================== -->
+<h2>1. A raw door to the cable</h2>
+
+<h3>Why a normal socket won't do</h3>
+
+<p>A TCP or UDP socket gives you what's left after the kernel has done all the networking: it has already read and removed the Ethernet, IP and TCP headers, and you only see the payload. Your stack is going to do that work itself, so it needs the frames <em>before</em> the kernel's stack touches them.</p>
+
+<p>Linux has a socket family for exactly that: <a href="https://man7.org/linux/man-pages/man7/packet.7.html">packet sockets, <code>AF_PACKET</code></a>. In the man page's words, they "are used to receive or send raw packets at the device driver (OSI Layer 2) level". Opened as <code>SOCK_RAW</code>, a packet socket gives you each frame starting with its Ethernet header. The card has already removed the preamble and the frame check sequence (00, "Where Notwork sits"), so the frame starts at the destination MAC and ends at the last byte of the payload. On Wi-Fi it's Ethernet as Linux presents it (00, section 2).</p>
+
+<h3>Where it taps in</h3>
+
+<ul>
+<li><strong>Receiving:</strong> each frame that arrives on the interface is handed to your socket <em>and</em>, as a copy, to the kernel's own stack. The kernel still sees everything. That's why your stack has its own IP address: the kernel ignores traffic that isn't for its own addresses, so it doesn't answer in your place.</li>
+<li><strong>Sending:</strong> a frame you write goes straight to the driver, past the kernel's IP stack and its firewall. Linux adds nothing to it. Whatever bytes you write are the frame.</li>
+</ul>
+
+<h3>One frame per read</h3>
+
+<p>A packet socket keeps frames apart: each read returns exactly one frame, and each write sends exactly one. If your buffer is smaller than the frame, the rest of the frame is <strong>silently cut off</strong> and lost. The next read returns the next frame, not the rest of this one (<a href="https://man7.org/linux/man-pages/man2/recv.2.html">recv(2)</a>, under <code>MSG_TRUNC</code>). With offloads off (the setup script does that), a frame is at most 1514 bytes: the 1500-byte <a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit">MTU</a> plus the 14-byte Ethernet header. So read into a buffer at least that big; 2048 bytes is a common choice.</p>
+
+<h3>Privileges</h3>
+
+<p>A packet socket sees every frame on the interface, other programs' traffic included, and can send any bytes it likes. So opening one requires the <code>CAP_NET_RAW</code> capability (<a href="https://man7.org/linux/man-pages/man7/capabilities.7.html">capabilities(7)</a>: "Use RAW and PACKET sockets"). Without it, opening the socket fails with <code>EPERM</code> ("operation not permitted"). There are two ways to get it:</p>
+<ul>
+<li>Run as root. The tests do: <code>go test -exec sudo ./...</code> builds as you and runs only the finished test binary with <code>sudo</code>.</li>
+<li>Give one program the capability: <code>sudo ./scripts/netsetup.sh --grant ./raw</code> (it uses <a href="https://man7.org/linux/man-pages/man8/setcap.8.html">setcap(8)</a>). Grant it again after each rebuild, because a new binary is a new file.</li>
+</ul>
+
+<section class="self-check">
+<p class="self-check-title">Self-check</p>
+<ol>
+<li>What does one read on a raw packet socket give you that a read on a TCP socket doesn't?</li>
+<li>Which capability does a program need to open a packet socket, and why is it guarded at all?</li>
+<li>You read into a 64-byte buffer, and a 98-byte frame arrives. What does the read give you, and what does the next read give you?</li>
+</ol>
+<details class="answers"><summary>Answers</summary>
+<ol>
+<li>One whole frame, starting with its Ethernet header (destination MAC first), with every header still in it. A TCP socket only gives payload bytes, after the kernel has read and removed all the headers.</li>
+<li><code>CAP_NET_RAW</code> (or running as root). It's guarded because a packet socket sees every frame on the interface, including other programs' traffic, and can send arbitrary frames.</li>
+<li>The first 64 bytes of the frame; the other 34 are lost. The next read gives the next frame, not the rest of this one.</li>
+</ol>
+</details>
+</section>
+
+<!-- ============================================================== -->
+<h2>2. The link package</h2>
+
+<p>Here is the whole package, <code>src/link/link.go</code>, in three pieces. Type it in rather than pasting it, and make sure every line makes sense to you: the explanations come after each piece. (You don't need to know Go well for this: most of the package is four system calls and a little wrapping.)</p>
+
+<h3>The file's top</h3>
+
+<pre><code>// Package link is a raw link on one network interface: whole Ethernet frames
+// in and out, as bytes, through a Linux packet socket (packet(7)).
+package link
+
+import (
+	"encoding/binary"
+	"fmt"
+	"net"
+	"os"
+	"time"
+
+	"golang.org/x/sys/unix"
+)
+
+// htons turns a 16-bit number from the CPU's byte order into network byte
+// order (big-endian), which is what packet(7) wants for protocol numbers.
+func htons(v uint16) uint16 {
+	var b [2]byte
+	binary.BigEndian.PutUint16(b[:], v)
+	return binary.NativeEndian.Uint16(b[:])
+}
+</code></pre>
+
+<ul>
+<li><strong><code>golang.org/x/sys/unix</code></strong> is Go's maintained package for Linux system calls and constants. The standard library's <code>syscall</code> package is <a href="https://pkg.go.dev/syscall">frozen</a> and points to it.</li>
+<li><strong><code>htons</code></strong> means "host to network, short" (a 16-bit number), the classic C name. packet(7) says the protocol is "the IEEE 802.3 protocol number in <strong>network byte order</strong>". <code>ETH_P_ALL</code> is <code>0x0003</code> ("every protocol"). On your little-endian CPU, its two bytes have to be swapped before the kernel reads them as a native number. That's the layout-versus-value point from 00, section 3. <code>x/sys/unix</code> passes <code>Protocol</code> through unchanged, so the swap is your job. Forget it, and you're asking for EtherType <code>0x0300</code>, which never arrives, so the socket stays silent.</li>
+</ul>
+
+<h3><code>Conn</code> and <code>Open</code></h3>
+
+<pre><code>// Conn is a raw link on one interface: an open packet socket, bound to it.
+type Conn struct {
+	f *os.File // the socket, handed to Go's runtime
+}
+
+// Open opens a raw link on the interface named ifname: every EtherType,
+// frames from that interface only, outgoing frames ignored.
+func Open(ifname string) (*Conn, error) {
+	// 0. The kernel knows interfaces by index, not by name: look it up.
+	ifi, err := net.InterfaceByName(ifname)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", ifname, err)
+	}
+
+	// 1. A raw packet socket. Protocol 0 means "receive nothing yet", so no
+	//    frames from other interfaces sneak in before we bind. SOCK_NONBLOCK
+	//    lets Go's runtime wait on it; SOCK_CLOEXEC keeps it out of programs
+	//    this one starts.
+	fd, err := unix.Socket(unix.AF_PACKET, unix.SOCK_RAW|unix.SOCK_NONBLOCK|unix.SOCK_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: socket: %w", ifi.Name, err)
+	}
+
+	// 2. Only hand us the frames that arrive, not the ones that leave
+	//    through this interface (ours or the host's).
+	err = unix.SetsockoptInt(fd, unix.SOL_PACKET, unix.PACKET_IGNORE_OUTGOING, 1)
+	if err != nil {
+		unix.Close(fd)
+		return nil, fmt.Errorf("open %s: ignore outgoing: %w", ifi.Name, err)
+	}
+
+	// 3. Bind to this one interface, and start receiving every EtherType.
+	addr := &amp;unix.SockaddrLinklayer{
+		Protocol: htons(unix.ETH_P_ALL),
+		Ifindex:  ifi.Index,
+	}
+	if err := unix.Bind(fd, addr); err != nil {
+		unix.Close(fd)
+		return nil, fmt.Errorf("open %s: bind: %w", ifi.Name, err)
+	}
+
+	// 4. Hand the fd to Go. Because it's non-blocking, the *os.File is
+	//    "pollable": Read and Write wait in the runtime instead of blocking
+	//    a thread, and read deadlines work.
+	f := os.NewFile(uintptr(fd), "packet:"+ifi.Name)
+	return &amp;Conn{f: f}, nil
+}
+</code></pre>
+
+<ul>
+<li><strong><code>Conn</code></strong> holds one thing: the socket, as an <code>*os.File</code> (step 4 explains why a file). Wrapping it in a type of its own means a <code>Conn</code> offers exactly the four methods a link needs, and nothing a file has that makes no sense for a link (seeking, file names, ...).</li>
+<li><strong>Step 0, the lookup.</strong> The kernel names interfaces by <strong>index</strong>, a small number, not by name. <code>ip link</code> prints the index at the start of each line. <a href="https://pkg.go.dev/net#InterfaceByName"><code>net.InterfaceByName</code></a> turns the name into a <code>*net.Interface</code> (<code>ifi</code>), which holds the index, the name and the MAC address. It's the first thing that can fail, for a name that doesn't exist, and no socket exists yet to clean up.</li>
+<li><strong>Step 1, <code>socket</code></strong> (<a href="https://man7.org/linux/man-pages/man2/socket.2.html">socket(2)</a>). The protocol argument is <code>0</code> on purpose. packet(7): "If protocol is set to zero, no packets are received. bind(2) can optionally be called with a nonzero <code>sll_protocol</code> to start receiving packets for the protocols specified." If you opened it with <code>ETH_P_ALL</code> straight away, it would receive from <em>every</em> interface until the bind, and the first frames you read might come from somewhere else.</li>
+<li><strong>Step 2, <code>PACKET_IGNORE_OUTGOING</code></strong> (Linux 4.20 and later; the option is defined in <a href="https://github.com/torvalds/linux/blob/master/include/uapi/linux/if_packet.h">if_packet.h</a>). By default, a packet socket also sees every frame that <em>leaves</em> through the interface: the ones the host sends, and your own. packet(7) calls these <code>PACKET_OUTGOING</code>. Your stack would read back each frame it wrote as if someone else had sent it. This option turns that off, so your stack only sees what arrives.</li>
+<li><strong>Step 3, <code>bind</code></strong> (<a href="https://man7.org/linux/man-pages/man2/bind.2.html">bind(2)</a>). packet(7): "Only the <code>sll_protocol</code> and the <code>sll_ifindex</code> address fields are used for purposes of binding." That's where the index from step 0 goes. After the bind, a plain <code>write</code> on the socket sends out of this interface, and reads only return frames from it.</li>
+<li><strong>Step 4, <code>os.NewFile</code></strong> (<a href="https://pkg.go.dev/os#NewFile">docs</a>): "If fd is in non-blocking mode, NewFile will attempt to return a pollable File (one for which the SetDeadline methods work)." So with <code>SOCK_NONBLOCK</code> from step 1, the <code>*os.File</code> already knows how to read, write, close and time out, one whole frame at a time. From here on, the <code>*os.File</code> owns the fd, and closing the file closes the socket.</li>
+<li><strong>The error paths</strong> close the fd by hand, because until step 4 nothing else owns it. Without that, a failed <code>Open</code> would leak a socket. Each error says which interface and which step failed, and wraps the system call's error with <code>%w</code>, so a caller can still check it (e.g. <code>errors.Is(err, unix.EPERM)</code> when the capability is missing).</li>
+</ul>
+
+<h3>The four methods</h3>
+
+<pre><code>// Read waits for the next frame that arrives and copies it into b. Each call
+// returns one whole frame; a frame longer than b is cut to len(b).
+func (c *Conn) Read(b []byte) (n int, err error) {
+	return c.f.Read(b)
+}
+
+// Write sends frame, unchanged, as one frame. It must start with the
+// Ethernet header; the card adds the FCS.
+func (c *Conn) Write(frame []byte) (n int, err error) {
+	return c.f.Write(frame)
+}
+
+// SetReadDeadline makes a Read that is waiting at t, or called after it,
+// fail with os.ErrDeadlineExceeded. The zero time means no deadline.
+func (c *Conn) SetReadDeadline(t time.Time) error {
+	return c.f.SetReadDeadline(t)
+}
+
+// Close closes the socket. A Read waiting in another goroutine returns
+// with an error.
+func (c *Conn) Close() error {
+	return c.f.Close()
+}
+</code></pre>
+
+<ul>
+<li><strong>Each method hands the call to the <code>*os.File</code>.</strong> All the real work happened in <code>Open</code>: the socket already keeps frames apart (section 1), so a file read is one frame and a file write is one frame.</li>
+<li><strong>Waiting</strong> happens in Go's runtime, thanks to step 4: a <code>Read</code> with nothing to read parks its goroutine until a frame arrives, the deadline passes (<code>os.ErrDeadlineExceeded</code>), or another goroutine calls <code>Close</code>, which wakes it with an error. That last one is how a program stops a reader cleanly.</li>
+</ul>
+
+<section class="self-check">
+<p class="self-check-title">Self-check</p>
+<ol>
+<li>Answer in hex: on your little-endian machine, which 16-bit number does <code>htons(0x0003)</code> return?</li>
+<li>Why does step 1 open the socket with protocol 0 instead of <code>ETH_P_ALL</code>?</li>
+<li>Without step 2, what would your stack read right after it writes a frame?</li>
+<li>What would you lose if the socket weren't opened with <code>SOCK_NONBLOCK</code>?</li>
+</ol>
+<details class="answers"><summary>Answers</summary>
+<ol>
+<li><code>0x0300</code>: the two bytes are swapped, so that in memory they lie as <code>00 03</code>, network byte order.</li>
+<li>With protocol 0 the socket receives nothing until bind sets the protocol and the interface. With <code>ETH_P_ALL</code> at <code>socket</code> time, it would receive frames from every interface in the moment before the bind.</li>
+<li>Its own frame: by default a packet socket also sees outgoing frames (its own and the host's), so the stack would read back what it just sent, as if someone else had sent it.</li>
+<li>The <code>*os.File</code> wouldn't be pollable: read deadlines wouldn't work (a read could block forever), and each blocked read would tie up an OS thread instead of waiting in Go's runtime.</li>
+</ol>
+</details>
+</section>
+
+<!-- ============================================================== -->
+<h2>3. The demo: <code>cmd/raw</code></h2>
+
+<p>This is the part you write. It's a small program that uses your <code>link</code> package to do two things a network card does all day: put one frame on the cable, and show you every frame that comes off it. No flags or arguments: what it works on is written into the program as two constants.</p>
+
+<h3>Where it lives</h3>
+
+<p>One file, <code>src/cmd/raw/main.go</code>, in <code>package main</code>. It uses your package by importing <code>notwork/link</code> (the module's name, then the folder).</p>
+
+<h3>What it does, in order</h3>
+
+<ol>
+<li><strong>Two constants at the top of the file:</strong> the interface to use, <code>"nw-stack"</code>, and the text to send, e.g. <code>"hello from my stack"</code>. To try it on your real network later, you change the first one to <code>"wlan0"</code> (or your wired interface) and build again.</li>
+<li><strong>Find your own MAC address.</strong> The frame you send has to say who sent it, and that's the interface's MAC. Look the interface up by name, the same way <code>Open</code>'s step 0 does: the <code>*net.Interface</code> you get back has it, in <code>HardwareAddr</code>.</li>
+<li><strong>Open a link</strong> on the interface with <code>link.Open</code>.</li>
+<li><strong>Build one frame and send it</strong> with <code>Write</code>. A frame is just bytes, one after the other:
+<table>
+<tr><th>Bytes</th><th>What you put there</th><th>What it means</th></tr>
+<tr><td>0–5</td><td>six bytes <code>ff</code></td><td>To: everyone on the cable (the broadcast address)</td></tr>
+<tr><td>6–11</td><td>your MAC, from step 2</td><td>From: you</td></tr>
+<tr><td>12–13</td><td><code>88 b5</code></td><td>What kind of frame this is (the EtherType)</td></tr>
+<tr><td>14 onward</td><td>the bytes of your text</td><td>The message</td></tr>
+</table>
+<code>0x88B5</code> is an EtherType IEEE reserves for "local experimental" use (<a href="https://standards-oui.ieee.org/ethertype/eth.txt">IEEE EtherType registry</a>), so no real protocol will mistake your frame for one of its own. What these first 14 bytes are, field by field, is what 02 is about.</li>
+<li><strong>Then print every frame that arrives, forever</strong>, until you stop the program with Ctrl-C. Read into a 2048-byte buffer (section 1, "One frame per read"). For each frame, print one line with its length, then its bytes in hex. Go's <a href="https://pkg.go.dev/encoding/hex#Dump"><code>hex.Dump</code></a> prints that layout for you, so you don't have to format anything. One frame looks like this (your MAC addresses will differ):
+<pre><code>42 bytes
+00000000  ff ff ff ff ff ff 02 4b  1c 9e 30 01 08 06 00 01  |.......K..0.....|
+00000010  08 00 06 04 00 01 02 4b  1c 9e 30 01 0a 4d 00 01  |.......K..0..M..|
+00000020  00 00 00 00 00 00 0a 4d  00 02                    |.......M..|</code></pre>
+The left column is the offset of the line's first byte (in hex), then 16 bytes, then the same bytes as text where they're printable. You'll see the first 6 + 6 + 2 bytes have the same shape as the frame you built in step 4.</li>
+</ol>
+
+<p>If anything fails (the interface doesn't exist, the program lacks the capability, a read fails), print the error and stop. <a href="https://pkg.go.dev/log#Fatal"><code>log.Fatal</code></a> does both.</p>
+
+<p>You won't see your own frame in the output: the link ignores frames that leave the interface (section 2, step 2). To see it, you watch from the other end of the cable (section 5).</p>
+
+<!-- ============================================================== -->
+<h2>4. Task</h2>
+
+<ol>
+<li>In <code>src/</code>: create the module with <code>go mod init notwork</code>, and add the dependency with <code>go get golang.org/x/sys/unix</code>.</li>
+<li>Type in the package <code>link</code> from section 2, as <code>src/link/link.go</code>. The tests are already in <code>src/link/link_test.go</code>.</li>
+<li>Make the tests pass: <code>go test -exec sudo ./link/</code>, from <code>src/</code>, with the cable set up. If one fails, compare your file with section 2 line by line: a typo is the likely cause.</li>
+<li>Write the demo <code>src/cmd/raw/main.go</code> (section 3), and show it off (section 5). This part is yours.</li>
+</ol>
+
+<details>
+<summary>Hint 1: the read tests time out without seeing a single frame</summary>
+<p>Is the cable up? Run <code>./scripts/netsetup.sh --status</code>. Then compare your bind step with section 2's, character by character. Watch the cable from the kernel's side while the test runs: <code>sudo ip netns exec notwork tcpdump -i nw-kernel -e -n</code>. If tcpdump shows frames that your Read never gets, the problem is in the socket. If tcpdump shows nothing, it's the cable.</p>
+</details>
+
+<details>
+<summary>Hint 2: where does the demo get the interface's MAC?</summary>
+<p>Look at step 0 of <code>Open</code>: what does that lookup give you besides the index?</p>
+</details>
+
+<details>
+<summary>Hint 3: the demo prints its own frames, or the frames run together</summary>
+<p>Only print <code>buf[:n]</code>, never the whole buffer. Ignoring outgoing frames happens in the socket (step 2), not in your demo. If you see your own frames, check that step 2 is there.</p>
+</details>
+
+<section class="impl-check" data-dir="cmd/raw">
+<p class="self-check-title">Implementation check</p>
+<p>Checks your demo <code>cmd/raw</code> against section 3. It can't open sockets, so run the show-off in section 5 yourself, and mention what you saw if something's off. For the <code>link</code> package, the tests are the check: <code>go test -exec sudo ./link/</code>.</p>
+</section>
+
+<!-- ============================================================== -->
+<h2>5. Verification</h2>
+
+<h3>Oracle 1: interop with the kernel (the tests)</h3>
+
+<p>The kernel on the other end of the cable is the source of truth. It sends frames you didn't make, and it reacts only to frames that are byte-for-byte right. The tests in <code>src/link/link_test.go</code> run in this order:</p>
+
+<ol>
+<li><strong>Unknown interface:</strong> <code>Open</code> of a name that doesn't exist fails. This one needs neither root nor the cable.</li>
+<li><strong>Open and close</strong> <code>nw-stack</code>.</li>
+<li><strong>Deadline:</strong> on the quiet cable, a <code>Read</code> with a 200 ms deadline gives up after about 200 ms, with <code>os.ErrDeadlineExceeded</code>.</li>
+<li><strong>Read a real frame:</strong> the kernel pings <code>10.77.0.2</code>. It doesn't know which MAC address goes with that IP, so it first broadcasts a question about it (that's ARP, section 03). Your <code>Read</code> must return that frame intact: 42 bytes, sent to the broadcast address, from <code>nw-kernel</code>'s MAC.</li>
+<li><strong>Write a real frame:</strong> the test writes, through your <code>Write</code>, a question it built itself: "who has <code>10.77.0.1</code>?". The kernel only answers a correct frame, so the answer arriving proves your frame left intact. Your own question must never come back to <code>Read</code>.</li>
+<li><strong>Read after close</strong> fails, and doesn't block.</li>
+</ol>
+
+<p>They skip, with a message, when they're not run as root or when <code>nw-stack</code> doesn't exist. Add <code>-v</code> to see which ran.</p>
+
+<h3>Oracle 2: the real world (the show-off)</h3>
+
+<p>Build the demo and give it the capability, from <code>src/</code> (grant it again after every build):</p>
+<pre><code>go build -o raw ./cmd/raw
+sudo ./scripts/netsetup.sh --grant ./raw</code></pre>
+
+<ul>
+<li><strong>Frames out, on the cable.</strong> In one terminal, watch the kernel's end of the cable: <code>sudo ip netns exec notwork tcpdump -i nw-kernel -e -xx</code>. In another, run <code>./raw</code>. tcpdump prints your frame: your MAC, the broadcast address, <code>ethertype Unknown (0x88b5)</code>, and your text in the hex.</li>
+<li><strong>Frames in, on the cable.</strong> Leave <code>./raw</code> running. In a third terminal, make the kernel talk: <code>sudo ip netns exec notwork ping 10.77.0.2</code>. A frame appears in your demo about once a second: the kernel asking who has <code>10.77.0.2</code>, like the example in section 3. Nobody answers yet. That's 03.</li>
+<li><strong>Frames in, on your real network.</strong> Change the interface constant to <code>"wlan0"</code> (or your wired interface; <code>./scripts/netsetup.sh --status</code> shows which one), build, grant, and run it again. Your LAN's chatter streams in: broadcasts, multicast announcements, traffic to your machine. Compare it with <code>sudo tcpdump -i wlan0 -xx</code>: the bytes match. tcpdump also shows what your machine sends, and your demo doesn't, because of step 2. Put the constant back to <code>"nw-stack"</code> afterwards.</li>
+</ul>
+
+<!-- ============================================================== -->
+<h2>6. Out of scope</h2>
+
+<ul>
+<li><strong>Memory-mapped rings</strong> (<code>PACKET_RX_RING</code>, TPACKET_V3; <a href="https://docs.kernel.org/networking/packet_mmap.html">packet_mmap</a>): the kernel and the program share a buffer, so there's no system call per frame. Real capture tools use them to keep up with fast links.</li>
+<li><strong>BPF filters</strong> (<code>SO_ATTACH_FILTER</code>; <a href="https://docs.kernel.org/networking/filter.html">kernel docs</a>): the kernel drops unwanted frames before they reach the socket. tcpdump compiles its filter expressions into these.</li>
+<li><strong>Promiscuous mode</strong> (<code>PACKET_ADD_MEMBERSHIP</code>, packet(7)): asks the card to deliver frames addressed to other machines, too. Sniffers on shared networks need it; your stack only cares about its own traffic.</li>
+<li><strong>VLAN tags and other aux data</strong> (<code>PACKET_AUXDATA</code>): on many cards the kernel strips VLAN tags before you see the frame, and a real stack reads them back from aux data.</li>
+<li><strong>Timestamps</strong> (<code>SO_TIMESTAMPNS</code>; <a href="https://docs.kernel.org/networking/timestamping.html">kernel docs</a>): when exactly each frame arrived. Capture tools record it.</li>
+<li><strong><code>SOCK_DGRAM</code> packet sockets</strong> ("cooked" mode): the kernel removes and builds the Ethernet header for you, which would skip the next section.</li>
+</ul>
+
+</main>
+</body>
+</html>

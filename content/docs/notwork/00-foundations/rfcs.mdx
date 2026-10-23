@@ -1,0 +1,93 @@
+---
+title: RFCs
+description: Where the rules of the internet are written down, why they matter, and how to read them.
+---
+
+{/* DRAFT by the writing agent, at Sophia's request. She rewrites it in her own words. */}
+
+Nobody owns the internet. Your laptop, your router and a web server were built by different people, in different languages, and share no code. They still understand each other, because they all follow the same rules, written down where anyone can read them. Most of those rules are <Term def="Request for Comments: a numbered document published by the IETF, the group that standardizes internet protocols.">RFCs</Term>.
+
+The first one, RFC 1, was written by Steve Crocker in April 1969, as notes for the network that became the internet <Cite href="https://www.rfc-editor.org/rfc/rfc1">RFC 1</Cite>. They were meant as requests for comments, and the name stuck. Today their numbers run past 9000.
+
+An RFC tells you exactly what to send and what to expect back. It doesn't care who wrote your code. Follow it, and your code can talk to every other program that follows it too.
+
+<Idea>Follow the RFC, and the real world talks back.</Idea>
+
+That's what this whole book does: you read the RFC, you build what it says, and the real world answers. Your router, your phone and servers you've never seen will treat your code like any other.
+
+## Not the only source of truth
+
+RFCs come from the IETF, which covers the protocols of the internet. Other groups write other rules:
+
+- **IEEE** writes the standards for the hardware side of local networks. Ethernet is IEEE 802.3, and Wi-Fi is IEEE 802.11. They describe how machines on one cable or one radio reach each other, which came before, and sits below, the internet's protocols. So Ethernet has no RFC <Cite href="https://en.wikipedia.org/wiki/IEEE_802.3">IEEE 802.3</Cite>.
+- **Other bodies** cover other things: WHATWG writes HTML, and ISO and POSIX standardize many more.
+- **Real implementations** count too. When every program does something the spec doesn't quite say, that's what yours has to get along with.
+
+The idea is the same everywhere: find where the rules are written down, and follow them.
+
+## An RFC is never edited
+
+Once an RFC is published, its text never changes. When a protocol needs fixing, a new RFC comes out with a new number, and the old one is marked as **obsoleted**. TCP's first RFC, 793, is from 1981. In 2022, RFC 9293 replaced it, and its first lines say so:
+
+```text
+Internet Engineering Task Force (IETF)                      W. Eddy, Ed.
+STD: 7                                                       MTI Systems
+Request for Comments: 9293                                   August 2022
+Obsoletes: 793, 879, 2873, 6093, 6429, 6528,
+           6691
+Updates: 1011, 1122, 5961
+Category: Standards Track
+```
+
+- **Obsoletes**: these RFCs are replaced. Read this one instead.
+- **Updates**: these RFCs still stand, but this one changes part of them.
+- **Category**: what kind of document it is. *Standards Track* is a standard. *Informational* and *Experimental* aren't.
+
+Small mistakes, like typos or a wrong number in an example, don't get a new RFC. They're listed as <Term def="Corrections reported after publication, listed next to the RFC on rfc-editor.org.">errata</Term> on the RFC's page <Cite href="https://www.rfc-editor.org/errata.php">RFC errata</Cite>.
+
+<Aside type="tip" title="Is this RFC still current?">
+  Look it up on rfc-editor.org, at `rfc-editor.org/info/rfc793`. If it's been replaced, the page lists it under *Obsoleted by*.
+</Aside>
+
+Not every RFC is serious, either. Every April 1st brings a joke one, like RFC 1149, which sends IP packets by carrier pigeon <Cite href="https://www.rfc-editor.org/rfc/rfc1149">RFC 1149</Cite>.
+
+## MUST, SHOULD, MAY
+
+RFCs use a few words with a precise meaning, defined in RFC 2119 <Cite href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</Cite>. They only carry that meaning in capitals <Cite href="https://www.rfc-editor.org/rfc/rfc8174">RFC 8174</Cite>:
+
+- **MUST** (or MUST NOT): required. Skip it, and other machines may not understand yours.
+- **SHOULD** (or SHOULD NOT): do it, unless you have a good reason not to and understand what it costs.
+- **MAY**: truly optional. Whether you do it or not, the other side has to cope.
+
+Notwork follows the happy path, and leaves parts of each protocol out. When a chapter says what it skips, these words tell you how much it matters.
+
+## Be liberal in what you accept
+
+One old rule runs through every layer. RFC 1122 calls it the *robustness principle* <Cite href="https://www.rfc-editor.org/rfc/rfc1122#section-1.2.2">RFC 1122, 1.2.2</Cite>:
+
+> Be liberal in what you accept, and conservative in what you send.
+
+Send exactly what the RFC says. When something odd arrives, don't crash: ignore it, or make the best of it. Your stack will need this from its first day. Your real network is full of traffic it doesn't understand yet, and it has to let that pass by.
+
+<Aside title="Not everyone agrees anymore">
+  Being too forgiving lets broken implementations spread, because nobody notices they're broken. RFC 9413 argues for a stricter take <Cite href="https://www.rfc-editor.org/rfc/rfc9413">RFC 9413</Cite>.
+</Aside>
+
+## How to read one
+
+Don't read an RFC from top to bottom. It's a reference, not a story.
+
+1. **Check the top first.** Is it current, or obsoleted? Is it a standard, or only informational?
+2. **Read the abstract and the introduction.** They say what the protocol is for and what problem it solves.
+3. **Skim the terminology.** Most RFCs define their words early, and use them precisely after that.
+4. **Then read only the part you need**, and come back to it whenever your code and the RFC disagree.
+
+Each chapter links you to the sections it uses, so you never have to find your way around a whole RFC alone.
+
+<Check question="A blog post about TCP cites RFC 793. Where should you check what it says?">
+  In RFC 9293. RFC 793 is obsoleted: 9293 replaced it in 2022, and gathered the fixes made to TCP since 1981. The post isn't necessarily wrong, but 9293 is the current rule.
+</Check>
+
+<Check question="An RFC says a receiver SHOULD do something, and your stack doesn't. Is your stack broken?">
+  Not necessarily. SHOULD means "do it unless you have a good reason not to". Your stack still works with others, but you should know what you lose by skipping it. If it said MUST, other machines might not understand yours.
+</Check>

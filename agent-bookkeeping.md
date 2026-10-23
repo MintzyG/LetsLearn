@@ -27,7 +27,7 @@ One table per project. The first agent to work on a project adds its table; each
 |---|---|---|---|---|---|---|
 | intro | Book intro | – | – | – | – | done |
 | 00 | Foundations | wip | – | done | – | – |
-| 01 | Setup | – | – | – | – | wip (setup page done) |
+| 01 | Setup | wip | – | – | – | wip (setup page done) |
 
 ## Log
 

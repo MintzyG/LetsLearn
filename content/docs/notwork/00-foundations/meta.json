@@ -1,0 +1,4 @@
+{
+  "title": "00 Foundations",
+  "pages": ["index", "rfcs", "layers", "addresses", "packets", "tools"]
+}

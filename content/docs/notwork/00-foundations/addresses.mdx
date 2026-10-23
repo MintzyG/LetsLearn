@@ -1,0 +1,96 @@
+---
+title: Addresses and links
+description: MAC, IP and port, which address does which job, and how a packet crosses networks.
+---
+
+{/* DRAFT by the writing agent, at Sophia's request. She rewrites it in her own words. */}
+
+A packet carries three kinds of address, one per layer. Each one answers a different question.
+
+| Address | Layer | Answers | Size | Written as |
+|---|---|---|---|---|
+| MAC address | L2 | Which device on *this* local network? | 6 bytes | `ac:67:5d:fd:4c:d3` (hex) |
+| IPv4 address | L3 | Which machine, anywhere on the internet? | 4 bytes | `192.168.1.23` (each byte in decimal) |
+| Port | L4 | Which program on that machine? | 2 bytes | `80` |
+
+## MAC addresses
+
+A <Term def="Media Access Control address: the 6-byte address of a network card on its local network.">MAC address</Term> is given to the network card by its maker, though the operating system can change it <Cite href="https://en.wikipedia.org/wiki/MAC_address">MAC address</Cite>. It only means something on one local network: a router in another country neither knows nor cares about your laptop's MAC.
+
+One MAC is special. `ff:ff:ff:ff:ff:ff` is the **broadcast** address: every device on the local network accepts a frame sent to it. That's how you reach a device whose MAC you don't know yet.
+
+## IP addresses
+
+An IP address names a machine's place in the internet. It's built so routers can find their way: the first part names a **network**, the rest names a machine on it.
+
+The split is written as a <Term def="How many of the address's first bits name the network. The rest name the machine.">prefix length</Term>. `192.168.1.23/24` means the first 24 bits, `192.168.1`, are the network, and the last 8 are this machine. Every address that starts with the same 24 bits is on the same local network <Cite href="https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing">CIDR</Cite>.
+
+Some ranges are **private**: `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16`. Any home network may use them, so they're never routed on the public internet <Cite href="https://www.rfc-editor.org/rfc/rfc1918">RFC 1918</Cite>.
+
+<Aside type="warning" title="Private doesn't mean local">
+  Whether an address is on your network depends only on the prefix. `10.0.0.5` is private, but it isn't on a `192.168.1.0/24` network.
+</Aside>
+
+## Ports
+
+Ports pick the program. Servers listen on well-known ports: 80 for HTTP, 53 for DNS. A client gets a temporary port from its operating system for each connection, so the replies find their way back to the right program.
+
+## The link and the network
+
+A <Term def="The devices that can reach each other directly with frames addressed by MAC, like everything on your home Wi-Fi.">link</Term>, or local network, is every device you can reach directly, by MAC. Everything on your home Wi-Fi and plugged into your home router, for example. Your laptop can send a frame straight to any of them.
+
+Anything else goes through a **router**. Your laptop knows one router, its **default gateway**, and sends everything that isn't local there. The IP header still names the far-away destination, but the frame around it is addressed to the router's MAC.
+
+The router unwraps the frame, looks at the destination IP, and picks the next router. Then it wraps the *same* IP packet in a *new* frame, for the next link. This repeats at every hop:
+
+<Ladder
+  parties={['Laptop', 'Home router', 'ISP router', 'Server']}
+  messages={[
+    { from: 'Laptop', to: 'Home router', label: 'MAC: home router', note: 'IP: 203.0.113.80' },
+    { from: 'Home router', to: 'ISP router', label: 'MAC: ISP router', note: 'IP: 203.0.113.80' },
+    { from: 'ISP router', to: 'Server', label: 'MAC: server', note: 'IP: 203.0.113.80' },
+  ]}
+  caption="One packet, three links. Each link gets a new frame with a new MAC; the destination IP never changes."
+/>
+
+A MAC only means something on one link, so it can't take a packet further than the next device. The IP names the final machine, so it has to stay the same the whole way.
+
+<Idea>MACs change at every hop. IPs stay the same.</Idea>
+
+That's why a network needs two kinds of address. (There's one exception, on almost every home network: NAT, below.)
+
+## The devices
+
+- A **switch** works at L2. It connects the devices on one link, and sends each frame only to the port where its destination MAC lives. It never changes a frame <Cite href="https://en.wikipedia.org/wiki/Network_switch">Switch</Cite>.
+- A **router** works at L3. It connects different networks, with one interface, and one MAC, on each. It forwards packets by destination IP, in a new frame for each link.
+- A **wireless access point** connects Wi-Fi to the wired link. To the rest of the network, the Wi-Fi devices look like they're on the same cable.
+
+The box your internet provider gave you is usually all three in one. It also hands out addresses on your network (with DHCP, chapter 08), and it does NAT.
+
+<Term def="Network address translation: the router rewrites private source addresses to its own public one on the way out, and back on the way in.">NAT</Term> exists because private addresses can't be used on the internet. As a packet leaves your home, the router swaps its private source address for the router's own public one, and remembers the swap so it can undo it on the replies <Cite href="https://www.rfc-editor.org/rfc/rfc3022">RFC 3022</Cite>. That's why a server sees all your home devices as one address. NAT changes the *source* IP; the destination stays the same.
+
+## Wi-Fi, presented as Ethernet
+
+Wi-Fi isn't Ethernet. Over the air, devices send 802.11 frames, with a different header, their own acknowledgements, and encryption.
+
+But on Linux, a Wi-Fi interface presents itself to the rest of the system as Ethernet. The Wi-Fi layer and the driver convert between 802.11 and Ethernet frames on the way in and out <Cite href="https://docs.kernel.org/driver-api/80211/mac80211.html">mac80211</Cite>. Everything above the driver, your stack included, sees plain Ethernet frames.
+
+So your stack speaks Ethernet whether your laptop is plugged in or on Wi-Fi.
+
+One question is left open: your laptop knows the gateway's *IP*, but a frame needs its *MAC*. How do you find a MAC from an IP? That's chapter 03.
+
+<Check question="Which kind of address answers each? (a) Which program on the server gets this data? (b) Which device on this Wi-Fi takes this frame? (c) Which machine on the internet is this packet for?">
+  (a) The port. (b) The MAC address. (c) The IP address.
+</Check>
+
+<Check question="Your laptop is 10.1.4.20/24. Is 10.1.4.99 on your network? Is 10.1.5.7, and if not, where does your laptop send the frame?">
+  `10.1.4.99` is: its first 24 bits, `10.1.4`, match. `10.1.5.7` isn't: the third byte differs. Both are private, but that doesn't matter, only the prefix does. The frame goes to the default gateway's MAC, and the IP header still says `10.1.5.7`.
+</Check>
+
+<Check question="A packet crosses a dozen routers. Which changes on the way, the destination MAC or the destination IP? Why does one change, and why can the other stay the same?">
+  The destination MAC changes at every hop. A MAC only means something on one link, so each router puts the packet in a new frame for the next device. The destination IP stays the same, because it names the final machine, and every router needs it to pick the next hop.
+</Check>
+
+<Check question="Why does your stack see Ethernet frames on a Wi-Fi interface?">
+  Linux's Wi-Fi layer and the driver convert between 802.11 frames and Ethernet frames. Everything above the driver sees Ethernet.
+</Check>

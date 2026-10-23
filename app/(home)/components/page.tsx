@@ -26,7 +26,7 @@ import {
 } from '@/components/book';
 import { mintDark, mintLight } from '@/lib/code-themes';
 
-// The component showcase. Only `next dev` serves it (see pageExtensions in next.config.mjs).
+// The component showcase.
 // The examples are made up or plain facts from public specs; none of them is a book's answer.
 
 export const metadata: Metadata = { title: 'Book components' };
@@ -405,7 +405,7 @@ export default function ComponentsPage() {
             makes it. Fumadocs&apos; <code className="font-mono text-base">Callout</code>,{' '}
             <code className="font-mono text-base">Cards</code>, <code className="font-mono text-base">Steps</code>,{' '}
             <code className="font-mono text-base">Tabs</code> and <code className="font-mono text-base">Accordions</code>{' '}
-            work too. This page only exists under <code className="font-mono text-base">next dev</code>.
+            work too.
           </p>
         </div>
       </section>

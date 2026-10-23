@@ -1,4 +1,4 @@
-// Components any book can use in its MDX. Each one is shown off at /dev/components (dev only).
+// Components any book can use in its MDX. Each one is shown off at /components.
 export { Aside } from './aside';
 export { Bitfield, type BitfieldField } from './bitfield';
 export { Challenge, Deepening } from './challenge';

@@ -24,7 +24,7 @@ const steps: { title: string; text: string }[] = [
   },
 ];
 
-// Each project is a folder in content/docs whose meta.json sets "root": true.
+// Each project is a top-level folder in content/docs (lib/source.ts marks them all as roots).
 function getProjects(): Folder[] {
   return source
     .getPageTree()

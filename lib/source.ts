@@ -1,4 +1,4 @@
-import { llms, loader } from 'fumadocs-core/source';
+import { llms, loader, type LoaderPlugin } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { docsRoute } from './shared';
 import { defineDocs } from 'fumadocs-mdx/macro';
@@ -22,11 +22,23 @@ const docs = defineDocs({
   },
 });
 
+// Every top-level folder in content/docs is a book, so it gets its own sidebar even when its
+// meta.json leaves out "root": true (Fumadocs Studio writes new folders without it).
+const booksAreRootsPlugin: LoaderPlugin = {
+  name: 'letslearn:books-are-roots',
+  transformPageTree: {
+    folder(node, dir) {
+      if (dir && !dir.includes('/')) node.root = true;
+      return node;
+    },
+  },
+};
+
 // See https://fumadocs.dev/docs/headless/source-api for more info
 export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
-  plugins: [lucideIconsPlugin()],
+  plugins: [lucideIconsPlugin(), booksAreRootsPlugin],
 });
 
 export const docsLlms = llms(source, {

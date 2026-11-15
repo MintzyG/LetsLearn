@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { Check } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { cn } from '../../lib/cn';
 
 /**
  * "You're done when": the checks that say a section is finished. Ticks stay in

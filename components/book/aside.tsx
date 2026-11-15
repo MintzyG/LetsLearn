@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Info, Lightbulb, TriangleAlert } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { cn } from '../../lib/cn';
 
 const kinds = {
   note: { icon: Info, bar: 'border-fd-primary/60', tint: 'text-fd-primary' },

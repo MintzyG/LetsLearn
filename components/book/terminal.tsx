@@ -1,4 +1,4 @@
-import { cn } from '@/lib/cn';
+import { cn } from '../../lib/cn';
 
 // Lines a test run or a tool prints when things went right or wrong.
 const good = /^(ok\b|PASS\b|--- PASS)/;

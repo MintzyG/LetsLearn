@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { cn } from '@/lib/cn';
+import { cn } from '../../lib/cn';
 
 // A diagram drawn on the paper: the grid runs the whole way down, faint.
 const fullPaper = { '--paper-mask': 'none', '--paper-ink': '8%' } as CSSProperties;

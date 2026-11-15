@@ -180,8 +180,8 @@ html > body[data-scroll-locked] {
   margin-top: 0.5rem;
 }
 
-/* Tables: rows ruled like the home page's chapter list, no box, no zebra. */
-.book-body.prose table {
+/* Tables: rows ruled like the home page's chapter list, no box, no zebra. Components (not-prose) style their own. */
+.book-body.prose table:not(.not-prose *) {
   font-size: 0.9375rem;
   border: none;
   border-radius: 0;
@@ -189,12 +189,12 @@ html > body[data-scroll-locked] {
   background: none;
 }
 
-.book-body.prose :is(thead, tbody, tr, th, td) {
+.book-body.prose :is(thead, tbody, tr, th, td):not(.not-prose *) {
   background: none;
   border: none;
 }
 
-.book-body.prose thead th {
+.book-body.prose thead th:not(.not-prose *) {
   font-weight: 500;
   color: var(--color-fd-muted-foreground);
   border-bottom: 1px solid color-mix(in srgb, var(--color-fd-primary) 35%, transparent);
@@ -202,13 +202,13 @@ html > body[data-scroll-locked] {
   text-align: left;
 }
 
-.book-body.prose tbody td {
+.book-body.prose tbody td:not(.not-prose *) {
   border-bottom: 1px solid var(--color-fd-border);
   padding: 0.7rem 1rem 0.7rem 0;
   vertical-align: baseline;
 }
 
-.book-body.prose tbody td:first-child {
+.book-body.prose tbody td:first-child:not(.not-prose *) {
   white-space: nowrap;
   font-weight: 500;
   color: var(--color-fd-foreground);

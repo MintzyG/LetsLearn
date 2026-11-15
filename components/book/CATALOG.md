@@ -303,7 +303,192 @@ Who sends what to whom, time running down. lost draws a message that never arriv
 />
 ```
 
-## Languages
+## Learning a language
+
+### CodeCompare
+
+The same thing in two or three languages side by side, for learning a new language from one you know. Children are fenced code blocks with titles.
+
+- children: fenced code blocks, each with title="Language"
+- caption?
+
+```mdx
+<CodeCompare>
+
+```py title="Python"
+nums = [3, 1, 4]
+total = 0
+for n in nums:
+    total += n
+```
+
+```go title="Go"
+nums := []int{3, 1, 4}
+total := 0
+for _, n := range nums {
+	total += n
+}
+```
+
+</CodeCompare>
+```
+
+### Predict
+
+"What does this print?": code to read, a moment to guess, then the real output and why. For the surprising corners of a language.
+
+- children: a fenced code block
+- output: what it really prints
+- why?: the explanation
+- question? (default "What does this print?")
+
+```mdx
+<Predict output="3 3.5" why="Both operands of 7 / 2 are untyped integer constants, so / divides integers. 7.0 is a float constant.">
+
+```go
+fmt.Println(7/2, 7.0/2)
+```
+
+</Predict>
+```
+
+### CodeNotes
+
+A code block with numbered notes on its lines. Pointing at a note lights up the lines it explains.
+
+- children: a fenced code block
+- notes: { line: number | [from, to], text }[] (lines count from 1)
+
+```mdx
+<CodeNotes
+  notes={[
+    { line: 1, text: 'Every Go file starts by naming its package; main makes a program.' },
+    { line: 3, text: 'Imports are by path. fmt formats and prints.' },
+    { line: [5, 7], text: 'main is where the program starts.' },
+  ]}
+>
+
+```go
+package main
+...
+```
+
+</CodeNotes>
+```
+
+### Trace
+
+Steps through a program line by line: the current line lit, every variable and its value, and the output so far. Values that just changed stand out.
+
+- children: a fenced code block
+- steps: { line, vars?: { name: value }, out?: printed text, note? }[]
+
+```mdx
+<Trace
+  steps={[
+    { line: 1, vars: { total: '0' } },
+    { line: 2, vars: { total: '0', i: '1' } },
+    { line: 3, vars: { total: '1', i: '1' } },
+    { line: 4, vars: { total: '1', i: '1' }, out: '1\n' },
+    ...
+  ]}
+>
+
+```go
+total := 0
+for i := 1; i <= 3; i++ {
+	total += i
+	fmt.Println(total)
+}
+```
+
+</Trace>
+```
+
+### Diagnostic
+
+A compiler error or warning drawn the way rustc prints them: message, location, source lines with the problem marked, and help. For learning to read errors.
+
+- level?: 'error' | 'warning' | 'note'
+- code?: e.g. "E0382"
+- message
+- file?: e.g. "src/main.rs:4:20"
+- source: the source lines
+- firstLine? (default 1)
+- labels?: { line, col, len?, text?, primary? }[]
+- notes?: string[], e.g. "help: …"
+
+```mdx
+<Diagnostic
+  code="E0382"
+  message="borrow of moved value: `s`"
+  file="src/main.rs:4:20"
+  firstLine={2}
+  source={`    let s = String::from("hi");
+    let t = s;
+    println!("{}", s);`}
+  labels={[
+    { line: 3, col: 13, text: 'value moved here' },
+    { line: 4, col: 20, primary: true, text: 'value borrowed here after move' },
+  ]}
+  notes={['help: consider cloning the value if the performance cost is acceptable']}
+/>
+```
+
+### Memory
+
+Stack and heap: frames with their variables, heap blocks, an arrow from each pointer to what it points at. For ownership, references, slices.
+
+- stack: { name, vars: { name, value?, to?: heap id, highlight? }[] }[] (innermost first)
+- heap?: { id, label?, cells: string[], freed?, highlight? }[]
+- caption?
+
+```mdx
+<Memory
+  stack={[{ name: 'main', vars: [
+    { name: 's', value: '(moved)' },
+    { name: 't', to: 'buf', highlight: true },
+  ] }]}
+  heap={[{ id: 'buf', label: 'String data', cells: ['h', 'i'] }]}
+/>
+```
+
+### Quiz
+
+A multiple-choice question with an explanation for every option. Picking one reveals if it is right and why.
+
+- question
+- options: { text, correct?, why? }[]
+- children?: e.g. a code block between question and options
+
+```mdx
+<Quiz
+  question="What is the zero value of a string in Go?"
+  options={[
+    { text: '""', correct: true, why: 'Every type has a zero value; for strings it is the empty string.' },
+    { text: 'nil', why: 'A string is a value, not a pointer, so it can never be nil.' },
+  ]}
+/>
+```
+
+### CodeMarks
+
+Marks inside any fenced code block, no component needed: [!code highlight], [!code ++] and [!code --] for a diff, [!code focus]. Put them in a comment at the end of the line.
+
+- // [!code highlight]
+- // [!code ++]  and  // [!code --]
+- // [!code focus]
+- title="file.go" after the language
+
+```mdx
+```go title="main.go"
+name := "world"
+fmt.Println("hello", name) // [!code --]
+fmt.Printf("hello, %s!\n", name) // [!code ++]
+```
+```
+
+## Compilers and interpreters
 
 ### Tokens
 

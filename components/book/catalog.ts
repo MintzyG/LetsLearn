@@ -28,7 +28,8 @@ export const groups = [
   'Writing',
   'Section structure',
   'Bytes and protocols',
-  'Languages',
+  'Learning a language',
+  'Compilers and interpreters',
   'Theory',
   'Embedded and hardware',
   'Graphics and math',
@@ -264,7 +265,7 @@ FAIL	example/count	0.003s\`}
   },
   {
     name: 'Tokens',
-    group: 'Languages',
+    group: 'Compilers and interpreters',
     purpose: 'A line of source cut into tokens, each with its kind under it. Kinds get a color each; highlight picks tokens by index.',
     props: ['tokens: [kind, text][]', 'source?: the line they came from', 'highlight?: number[] (token indices)', 'caption?'],
     usage: `<Tokens
@@ -279,7 +280,7 @@ FAIL	example/count	0.003s\`}
   },
   {
     name: 'Tree',
-    group: 'Languages',
+    group: 'Compilers and interpreters',
     purpose: 'A tree drawn top-down, written as an S-expression: ASTs, B-trees, scene graphs. A leading ! highlights a node; quote labels with spaces.',
     props: ['data: S-expression string, e.g. "(+ 1 !(* 2 3))", or { label, children?, highlight? }', 'caption?'],
     usage: `<Tree data='(let total (* price 3))' caption="The tree a parser builds for let total = price * 3." />
@@ -289,7 +290,7 @@ FAIL	example/count	0.003s\`}
   },
   {
     name: 'Grammar',
-    group: 'Languages',
+    group: 'Compilers and interpreters',
     purpose: 'BNF or EBNF rules, one per line. Nonterminals link to their rule, quoted terminals stand out; highlight picks rules by name.',
     props: ['rules: string, one `name = body ;` (or ::=, →) per line; lines starting with | continue a rule', 'highlight?: string[] (rule names)', 'id?: anchor prefix, for two grammars on a page', 'caption?'],
     usage: `<Grammar
@@ -302,7 +303,7 @@ factor = NUMBER | "(" expr ")" ;\`}
   },
   {
     name: 'Pipeline',
-    group: 'Languages',
+    group: 'Compilers and interpreters',
     purpose: 'Stages in a row and what flows between them. Wraps on narrow screens.',
     props: ['stages: { name, note?, out?: label on the arrow after it, highlight? }[]', 'caption?'],
     usage: `<Pipeline
@@ -546,5 +547,152 @@ $$`,
   pixelated
 />`,
     studio: { keywords: 'image comparison, before after, slider, compare', starter: { before: '/images/before.png', after: '/images/after.png' } },
+  },
+  {
+    name: 'CodeCompare',
+    group: 'Learning a language',
+    purpose: 'The same thing in two or three languages side by side, for learning a new language from one you know. Children are fenced code blocks with titles.',
+    props: ['children: fenced code blocks, each with title="Language"', 'caption?'],
+    usage: `<CodeCompare>
+
+\`\`\`py title="Python"
+nums = [3, 1, 4]
+total = 0
+for n in nums:
+    total += n
+\`\`\`
+
+\`\`\`go title="Go"
+nums := []int{3, 1, 4}
+total := 0
+for _, n := range nums {
+	total += n
+}
+\`\`\`
+
+</CodeCompare>`,
+    studio: { keywords: 'compare languages, side by side, translate code, versus', children: 'Two fenced code blocks, each with a title…' },
+  },
+  {
+    name: 'Predict',
+    group: 'Learning a language',
+    purpose: '"What does this print?": code to read, a moment to guess, then the real output and why. For the surprising corners of a language.',
+    props: ['children: a fenced code block', 'output: what it really prints', 'why?: the explanation', 'question? (default "What does this print?")'],
+    usage: `<Predict output="3 3.5" why="Both operands of 7 / 2 are untyped integer constants, so / divides integers. 7.0 is a float constant.">
+
+\`\`\`go
+fmt.Println(7/2, 7.0/2)
+\`\`\`
+
+</Predict>`,
+    studio: { keywords: 'predict output, guess, what does this print, quiz', children: 'A fenced code block…', starter: { output: '', why: '' } },
+  },
+  {
+    name: 'CodeNotes',
+    group: 'Learning a language',
+    purpose: 'A code block with numbered notes on its lines. Pointing at a note lights up the lines it explains.',
+    props: ['children: a fenced code block', 'notes: { line: number | [from, to], text }[] (lines count from 1)'],
+    usage: `<CodeNotes
+  notes={[
+    { line: 1, text: 'Every Go file starts by naming its package; main makes a program.' },
+    { line: 3, text: 'Imports are by path. fmt formats and prints.' },
+    { line: [5, 7], text: 'main is where the program starts.' },
+  ]}
+>
+
+\`\`\`go
+package main
+...
+\`\`\`
+
+</CodeNotes>`,
+    studio: { keywords: 'annotated code, code notes, walkthrough, explain lines', children: 'A fenced code block…', starter: { notes: [{ line: 1, text: 'What this line does.' }] } },
+  },
+  {
+    name: 'Trace',
+    group: 'Learning a language',
+    purpose: 'Steps through a program line by line: the current line lit, every variable and its value, and the output so far. Values that just changed stand out.',
+    props: ['children: a fenced code block', 'steps: { line, vars?: { name: value }, out?: printed text, note? }[]'],
+    usage: `<Trace
+  steps={[
+    { line: 1, vars: { total: '0' } },
+    { line: 2, vars: { total: '0', i: '1' } },
+    { line: 3, vars: { total: '1', i: '1' } },
+    { line: 4, vars: { total: '1', i: '1' }, out: '1\\n' },
+    ...
+  ]}
+>
+
+\`\`\`go
+total := 0
+for i := 1; i <= 3; i++ {
+	total += i
+	fmt.Println(total)
+}
+\`\`\`
+
+</Trace>`,
+    studio: { keywords: 'step through, trace, debugger, execution, variables', children: 'A fenced code block…', starter: { steps: [{ line: 1, vars: { x: '0' } }] } },
+  },
+  {
+    name: 'Diagnostic',
+    group: 'Learning a language',
+    purpose: 'A compiler error or warning drawn the way rustc prints them: message, location, source lines with the problem marked, and help. For learning to read errors.',
+    props: ["level?: 'error' | 'warning' | 'note'", 'code?: e.g. "E0382"', 'message', 'file?: e.g. "src/main.rs:4:20"', 'source: the source lines', 'firstLine? (default 1)', 'labels?: { line, col, len?, text?, primary? }[]', 'notes?: string[], e.g. "help: …"'],
+    usage: `<Diagnostic
+  code="E0382"
+  message="borrow of moved value: \`s\`"
+  file="src/main.rs:4:20"
+  firstLine={2}
+  source={\`    let s = String::from("hi");
+    let t = s;
+    println!("{}", s);\`}
+  labels={[
+    { line: 3, col: 13, text: 'value moved here' },
+    { line: 4, col: 20, primary: true, text: 'value borrowed here after move' },
+  ]}
+  notes={['help: consider cloning the value if the performance cost is acceptable']}
+/>`,
+    studio: { keywords: 'compiler error, warning, diagnostic, rustc, error message', starter: { message: 'what went wrong', source: 'let x = 1;', labels: [{ line: 1, col: 5, primary: true, text: 'here' }] } },
+  },
+  {
+    name: 'Memory',
+    group: 'Learning a language',
+    purpose: 'Stack and heap: frames with their variables, heap blocks, an arrow from each pointer to what it points at. For ownership, references, slices.',
+    props: ['stack: { name, vars: { name, value?, to?: heap id, highlight? }[] }[] (innermost first)', 'heap?: { id, label?, cells: string[], freed?, highlight? }[]', 'caption?'],
+    usage: `<Memory
+  stack={[{ name: 'main', vars: [
+    { name: 's', value: '(moved)' },
+    { name: 't', to: 'buf', highlight: true },
+  ] }]}
+  heap={[{ id: 'buf', label: 'String data', cells: ['h', 'i'] }]}
+/>`,
+    studio: { keywords: 'stack, heap, pointers, references, ownership, memory diagram', starter: { stack: [{ name: 'main', vars: [{ name: 'p', to: 'a' }] }], heap: [{ id: 'a', cells: ['1', '2'] }] } },
+  },
+  {
+    name: 'Quiz',
+    group: 'Learning a language',
+    purpose: 'A multiple-choice question with an explanation for every option. Picking one reveals if it is right and why.',
+    props: ['question', 'options: { text, correct?, why? }[]', 'children?: e.g. a code block between question and options'],
+    usage: `<Quiz
+  question="What is the zero value of a string in Go?"
+  options={[
+    { text: '""', correct: true, why: 'Every type has a zero value; for strings it is the empty string.' },
+    { text: 'nil', why: 'A string is a value, not a pointer, so it can never be nil.' },
+  ]}
+/>`,
+    studio: { keywords: 'quiz, multiple choice, question, test yourself', starter: { question: 'The question?', options: [{ text: 'Right', correct: true, why: 'Because…' }, { text: 'Wrong', why: 'Because…' }] } },
+  },
+  {
+    name: 'CodeMarks',
+    group: 'Learning a language',
+    purpose: 'Marks inside any fenced code block, no component needed: [!code highlight], [!code ++] and [!code --] for a diff, [!code focus]. Put them in a comment at the end of the line.',
+    props: ['// [!code highlight]', '// [!code ++]  and  // [!code --]', '// [!code focus]', 'title="file.go" after the language'],
+    usage: `\`\`\`go title="main.go"
+name := "world"
+fmt.Println("hello", name) // [!code --]
+fmt.Printf("hello, %s!\\n", name) // [!code ++]
+\`\`\``,
+    inline: true,
   },
 ];

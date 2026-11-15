@@ -8,8 +8,11 @@ import {
   Challenge,
   Check,
   Cite,
+  CodeCompare,
+  CodeNotes,
   Deepening,
   Derivation,
+  Diagnostic,
   DoneWhen,
   Figure,
   Grammar,
@@ -21,12 +24,15 @@ import {
   Kbd,
   Ladder,
   Matrix,
+  Memory,
   MemoryMap,
   OpcodeTable,
   Pinout,
   Pipeline,
   PixelGrid,
   Plane,
+  Predict,
+  Quiz,
   Recap,
   Reference,
   Register,
@@ -41,11 +47,24 @@ import {
   Terminal,
   Timing,
   Tokens,
+  Trace,
   Tree,
   Waveform,
 } from '@/components/book';
 import { catalog, groups } from '@/components/book/catalog';
 import { mintDark, mintLight } from '@/lib/code-themes';
+import { rehypeCodeDefaultOptions } from 'fumadocs-core/mdx-plugins';
+
+// A fenced code block, as MDX would render it, with [!code …] marks applied.
+const code = (lang: string, source: string, title?: string) => (
+  <ServerCodeBlock
+    lang={lang}
+    code={source}
+    themes={{ light: mintLight, dark: mintDark }}
+    transformers={rehypeCodeDefaultOptions.transformers}
+    codeblock={title ? { title } : undefined}
+  />
+);
 
 // The component showcase. What each component is for, its props and its MDX come from
 // components/book/catalog.ts; this page adds a live demo of each.
@@ -70,6 +89,128 @@ const ipv4 = [
 ];
 
 const demos: Record<string, ReactNode> = {
+  CodeCompare: (
+    <CodeCompare>
+      {code(
+        'py',
+        `nums = [3, 1, 4]
+total = 0
+for n in nums:
+    total += n`,
+        'Python',
+      )}
+      {code(
+        'go',
+        `nums := []int{3, 1, 4}
+total := 0
+for _, n := range nums {
+	total += n
+}`,
+        'Go',
+      )}
+    </CodeCompare>
+  ),
+  Predict: (
+    <Predict output="3 3.5" why="Both operands of 7/2 are untyped integer constants, so / divides integers and drops the remainder. 7.0 is a floating-point constant, so 7.0/2 is 3.5 (Go spec, Constant expressions).">
+      {code('go', 'fmt.Println(7/2, 7.0/2)')}
+    </Predict>
+  ),
+  CodeNotes: (
+    <CodeNotes
+      notes={[
+        { line: 1, text: 'Every Go file starts by naming its package; package main makes a program rather than a library.' },
+        { line: 3, text: 'Packages are imported by path. fmt formats and prints.' },
+        { line: [5, 7], text: 'main takes no arguments and returns nothing. The program starts here and ends when it returns.' },
+      ]}
+    >
+      {code(
+        'go',
+        `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello, world")
+}`,
+        'hello.go',
+      )}
+    </CodeNotes>
+  ),
+  Trace: (
+    <Trace
+      steps={[
+        { line: 1, vars: { total: '0' }, note: 'total starts at 0.' },
+        { line: 2, vars: { total: '0', i: '1' }, note: 'The loop starts: i = 1, and 1 <= 3 holds.' },
+        { line: 3, vars: { total: '1', i: '1' } },
+        { line: 4, vars: { total: '1', i: '1' }, out: '1\n' },
+        { line: 2, vars: { total: '1', i: '2' }, note: 'i++, and 2 <= 3 still holds.' },
+        { line: 3, vars: { total: '3', i: '2' } },
+        { line: 4, vars: { total: '3', i: '2' }, out: '3\n' },
+        { line: 2, vars: { total: '3', i: '3' } },
+        { line: 3, vars: { total: '6', i: '3' } },
+        { line: 4, vars: { total: '6', i: '3' }, out: '6\n' },
+        { line: 2, vars: { total: '6', i: '4' }, note: '4 <= 3 is false: the loop ends, and i goes out of scope with it.' },
+      ]}
+    >
+      {code(
+        'go',
+        `total := 0
+for i := 1; i <= 3; i++ {
+	total += i
+	fmt.Println(total)
+}`,
+      )}
+    </Trace>
+  ),
+  Diagnostic: (
+    <Diagnostic
+      code="E0382"
+      message="borrow of moved value: `s`"
+      file="src/main.rs:4:20"
+      firstLine={2}
+      source={`    let s = String::from("hi");
+    let t = s;
+    println!("{}", s);`}
+      labels={[
+        { line: 2, col: 9, text: 'move occurs because `s` has type `String`, which does not implement the `Copy` trait' },
+        { line: 3, col: 13, text: 'value moved here' },
+        { line: 4, col: 20, primary: true, text: 'value borrowed here after move' },
+      ]}
+      notes={['help: consider cloning the value if the performance cost is acceptable']}
+    />
+  ),
+  Memory: (
+    <Memory
+      caption="After let t = s; the String's data belongs to t, and s can't be used any more (The Rust Book, 4.1)."
+      stack={[
+        {
+          name: 'main',
+          vars: [
+            { name: 's', value: '(moved)' },
+            { name: 't', to: 'buf', highlight: true },
+          ],
+        },
+      ]}
+      heap={[{ id: 'buf', label: 'String data, len 2', cells: ['h', 'i'] }]}
+    />
+  ),
+  Quiz: (
+    <Quiz
+      question="What is the zero value of a string in Go?"
+      options={[
+        { text: '""', correct: true, why: 'Every type has a zero value; for strings it is the empty string (Go spec, The zero value).' },
+        { text: 'nil', why: 'A string is a value, not a pointer, so it can never be nil.' },
+        { text: '" "', why: 'That is a string holding one space, not an empty one.' },
+      ]}
+    />
+  ),
+  CodeMarks: code(
+    'go',
+    `name := "world"
+fmt.Println("hello", name) // [!code --]
+fmt.Printf("hello, %s!\\n", name) // [!code ++]`,
+    'main.go',
+  ),
   Idea: <Idea>A layer only talks to the layers right above and below it.</Idea>,
   Aside: (
       <>

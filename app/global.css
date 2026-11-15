@@ -368,3 +368,31 @@ html > body[data-scroll-locked] {
     transform: translateY(-4px);
   }
 }
+
+/* CodeNotes and Trace: a note's number at the end of its line, and the lit line(s). */
+.code-notes pre code .line {
+  display: inline-block;
+  min-width: 100%;
+  transition: background-color 0.15s;
+}
+
+.code-notes pre code .line[data-lit] {
+  background: color-mix(in srgb, var(--color-fd-primary) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--color-fd-primary);
+}
+
+.code-notes pre code .line[data-note]::after {
+  content: attr(data-note);
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-block: -0.2rem;
+  margin-left: 0.75rem;
+  border-radius: 999px;
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  vertical-align: 0.1em;
+}

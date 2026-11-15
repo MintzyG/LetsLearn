@@ -79,7 +79,8 @@ projects/material.css|js  shared style and script for every material page
 scripts/                  the material server (answer checking, implementation checks)
 content/docs/<name>/      the published book (meta.json with "root": true = its own sidebar)
 app/, components/, lib/   the Fumadocs (Next.js) site
-fumadocs-studio.config.ts the live editor's config
+components/book/          the book components; CATALOG.md lists them all (read it before writing MDX)
+fumadocs-studio.config.ts the live editor's config (studio/ registers the book components in it)
 justfile                  commands
 ```
 
@@ -92,11 +93,25 @@ Run `just` to list them. The main ones:
 - `just edit`: the live editor (Fumadocs Studio) at http://localhost:5180
 - `just work`: the site and the editor together
 - `just new <slug> "<Title>"`: create a new book root
+- `just section <book> <NN> <slug> "<Title>"`: create a section folder in a book
+- `just catalog`: regenerate `components/book/CATALOG.md` after changing `components/book/catalog.ts`
 - `just material <project> [NN]`: read a project's material, with self-check answers checked by Claude
 - `just check`: lint and type check
 - `just build`: production build
 
 pnpm is the package manager.
+
+## Book components
+
+`components/book/CATALOG.md` lists every component a chapter's MDX can use: what it's for, its props and an example. Read it before drafting MDX or a visual in the material, and prefer a component over hand-drawn markup. Live demos are at `/components` on the dev site.
+
+Adding or changing a component (site infrastructure, so only when asked):
+
+1. The component goes in `components/book/`, exported from `index.ts`. Import with relative paths (`../../lib/cn`), not `@/`: Fumadocs Studio loads these files outside Next.js.
+2. Its entry goes in `components/book/catalog.ts` (purpose, props, MDX example, and how Studio inserts it), and its demo in `app/(home)/components/page.tsx`.
+3. Run `just catalog`. `just check` fails while `CATALOG.md` is out of date.
+
+Diagrams draw facts from the spec or precomputed data, never the code a section asks for.
 
 ## Ground rules
 

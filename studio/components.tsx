@@ -45,10 +45,12 @@ function attribute(name: string, value: unknown) {
 
 function specFor(entry: Pick<CatalogEntry, 'name' | 'purpose' | 'studio'>): UiComponentSpec {
   const Book = components[entry.name];
-  const { children, childComponent, starter = {} } = entry.studio ?? {};
+  const { children, childComponent, starter = {}, keywords } = entry.studio ?? {};
   const spec: UiComponentSpec = {
     name: entry.name,
-    label: entry.name,
+    // The / menu searches labels only, so the keywords go in the label: "/diagram" finds every
+    // diagram, "/clock" finds Timing, without knowing the component's name.
+    label: keywords ? `${entry.name} · ${keywords}` : entry.name,
     icon: <Blocks size={13} />,
     ...(children ? { childrenRegion: { region: 'body', placeholder: children } } : {}),
     ...(childComponent ? { childComponent, listLike: true } : {}),
@@ -68,8 +70,8 @@ function specFor(entry: Pick<CatalogEntry, 'name' | 'purpose' | 'studio'>): UiCo
 
 // Parts that only live inside another component, so the catalog doesn't list them.
 const parts = [
-  { name: 'Spec', purpose: 'One thing the reader builds, inside a Task.', studio: { children: 'What it takes, returns and reports…', starter: { name: 'Name', kind: 'function' } } },
-  { name: 'Hint', purpose: 'One hint, inside Hints.', studio: { children: 'A nudge…' } },
+  { name: 'Spec', purpose: 'One thing the reader builds, inside a Task.', studio: { keywords: 'spec, function, type, inside Task', children: 'What it takes, returns and reports…', starter: { name: 'Name', kind: 'function' } } },
+  { name: 'Hint', purpose: 'One hint, inside Hints.', studio: { keywords: 'hint, inside Hints', children: 'A nudge…' } },
 ];
 
 export const bookComponents: UiComponentSpec[] = [...catalog.filter((c) => !c.inline), ...parts].map(specFor);

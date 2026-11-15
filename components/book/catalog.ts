@@ -13,6 +13,8 @@ export interface CatalogEntry {
   inline?: boolean;
   /** How Fumadocs Studio edits it. */
   studio?: {
+    /** Words to find it by in Studio's / menu, shown after the name: "Timing · timing diagram, clock, …". */
+    keywords?: string;
     /** It takes block children, edited in place; the text is the placeholder. */
     children?: string;
     /** Its children are this component, repeated (Hints → Hint). */
@@ -42,7 +44,7 @@ export const catalog: CatalogEntry[] = [
     usage: `<Idea>
   A layer only talks to the layers right above and below it.
 </Idea>`,
-    studio: { children: 'The one idea this section rests on…' },
+    studio: { keywords: 'key idea, big statement', children: 'The one idea this section rests on…' },
   },
   {
     name: 'Aside',
@@ -52,7 +54,7 @@ export const catalog: CatalogEntry[] = [
     usage: `<Aside type="warning" title="Byte order">
   Multi-byte fields go over the wire **big-endian**, whatever your CPU uses.
 </Aside>`,
-    studio: { children: 'A side remark…', starter: { type: 'note', title: 'Title' } },
+    studio: { keywords: 'note, tip, warning, callout', children: 'A side remark…', starter: { type: 'note', title: 'Title' } },
   },
   {
     name: 'Cite',
@@ -78,7 +80,7 @@ export const catalog: CatalogEntry[] = [
     usage: `<Check question="Two hosts on the same switch: does a frame between them pass through your router?">
   No. The switch forwards it by MAC address, straight from one port to the other.
 </Check>`,
-    studio: { children: 'The answer…', starter: { question: 'The question?' } },
+    studio: { keywords: 'self-check, question, quiz, answer', children: 'The answer…', starter: { question: 'The question?' } },
   },
   {
     name: 'Bitfield',
@@ -96,7 +98,7 @@ export const catalog: CatalogEntry[] = [
     { name: 'Options', bits: 'variable' },
   ]}
 />`,
-    studio: { starter: { fields: [{ name: 'Version', bits: 4 }, { name: 'Length', bits: 12 }, { name: 'Checksum', bits: 16 }] } },
+    studio: { keywords: 'header diagram, bits, packet layout, RFC', starter: { fields: [{ name: 'Version', bits: 4 }, { name: 'Length', bits: 12 }, { name: 'Checksum', bits: 16 }] } },
   },
   {
     name: 'HexDump',
@@ -111,7 +113,7 @@ export const catalog: CatalogEntry[] = [
     { start: 12, length: 2, label: 'EtherType' },
   ]}
 />`,
-    studio: { starter: { bytes: '45 00 00 54', ranges: [{ start: 0, length: 1, label: 'Version and IHL' }] } },
+    studio: { keywords: 'hex, bytes, dump, packet', starter: { bytes: '45 00 00 54', ranges: [{ start: 0, length: 1, label: 'Version and IHL' }] } },
   },
   {
     name: 'Ladder',
@@ -127,7 +129,7 @@ export const catalog: CatalogEntry[] = [
     { from: 'Server', to: 'Client', label: 'SYN, ACK', note: 'again, after a timeout' },
   ]}
 />`,
-    studio: { starter: { parties: ['Client', 'Server'], messages: [{ from: 'Client', to: 'Server', label: 'Hello' }] } },
+    studio: { keywords: 'sequence diagram, messages, handshake, protocol', starter: { parties: ['Client', 'Server'], messages: [{ from: 'Client', to: 'Server', label: 'Hello' }] } },
   },
   {
     name: 'Figure',
@@ -135,7 +137,7 @@ export const catalog: CatalogEntry[] = [
     purpose: 'An image (src, alt) or any diagram as children, with a caption.',
     props: ["src?: image path", "alt?", "caption?", "children?: any diagram instead of src"],
     usage: `<Figure src="/diagrams/layers.svg" alt="The four layers" caption="Each layer wraps the one above it." />`,
-    studio: { starter: { src: '/images/diagram.svg', alt: '', caption: 'Caption.' } },
+    studio: { keywords: 'image, picture, diagram, caption', starter: { src: '/images/diagram.svg', alt: '', caption: 'Caption.' } },
   },
   {
     name: 'Task',
@@ -153,7 +155,7 @@ export const catalog: CatalogEntry[] = [
     Reported by \`CountFile\` when a line is over 64 KiB.
   </Spec>
 </Task>`,
-    studio: { children: 'What to build, in prose, then <Spec> entries…' },
+    studio: { keywords: 'what to build, spec, assignment', children: 'What to build, in prose, then <Spec> entries…' },
   },
   {
     name: 'Hints',
@@ -165,7 +167,7 @@ export const catalog: CatalogEntry[] = [
   <Hint>Count the starts of words, not the spaces between them.</Hint>
   <Hint>A word starts where a non-space follows a space, or at the very beginning.</Hint>
 </Hints>`,
-    studio: { childComponent: 'Hint' },
+    studio: { keywords: 'hints, help, nudge, stuck', childComponent: 'Hint' },
   },
   {
     name: 'Terminal',
@@ -180,7 +182,7 @@ export const catalog: CatalogEntry[] = [
 FAIL
 FAIL	example/count	0.003s\`}
 />`,
-    studio: { starter: { command: 'go test ./...', output: 'ok' } },
+    studio: { keywords: 'command, shell, test output, console', starter: { command: 'go test ./...', output: 'ok' } },
   },
   {
     name: 'DoneWhen',
@@ -194,7 +196,7 @@ FAIL	example/count	0.003s\`}
     'Empty input gives 0, not an error',
   ]}
 />`,
-    studio: { starter: { items: ['The tests pass'] } },
+    studio: { keywords: 'checklist, done, finished', starter: { items: ['The tests pass'] } },
   },
   {
     name: 'ShowOff',
@@ -204,7 +206,7 @@ FAIL	example/count	0.003s\`}
     usage: `<ShowOff title="Count a real book">
   Download *Moby-Dick* from Project Gutenberg and count it. Compare with \`wc -w\`.
 </ShowOff>`,
-    studio: { children: 'Where the code meets the real world…', starter: { title: 'Show it off' } },
+    studio: { keywords: 'show it off, real world, demo', children: 'Where the code meets the real world…', starter: { title: 'Show it off' } },
   },
   {
     name: 'Recap',
@@ -216,7 +218,7 @@ FAIL	example/count	0.003s\`}
   - Line and byte counts
   - Tests that pin it all down
 </Recap>`,
-    studio: { children: '- What the reader has now' },
+    studio: { keywords: 'summary, recap, what you have now', children: '- What the reader has now' },
   },
   {
     name: 'Reference',
@@ -228,7 +230,7 @@ FAIL	example/count	0.003s\`}
   ...
   \`\`\`
 </Reference>`,
-    studio: { children: 'The reference code block…' },
+    studio: { keywords: 'reference code, solution, collapsed code', children: 'The reference code block…' },
   },
   {
     name: 'Challenge',
@@ -239,7 +241,7 @@ FAIL	example/count	0.003s\`}
   Make your counter report lines and bytes as well, like \`wc\`.
   Then make it read from standard input when no file is given.
 </Challenge>`,
-    studio: { children: 'Something to build with what you know now…', starter: { title: 'Title' } },
+    studio: { keywords: 'challenge, extra, exercise', children: 'Something to build with what you know now…', starter: { title: 'Title' } },
   },
   {
     name: 'Deepening',
@@ -250,7 +252,7 @@ FAIL	example/count	0.003s\`}
   Unicode defines word boundaries in UAX #29. Read it, and find three
   inputs where your counter and the standard disagree.
 </Deepening>`,
-    studio: { children: 'How the real thing does it…', starter: { title: 'Title' } },
+    studio: { keywords: 'deepening, go further, extra reading', children: 'How the real thing does it…', starter: { title: 'Title' } },
   },
   {
     name: 'Kbd',
@@ -273,7 +275,7 @@ FAIL	example/count	0.003s\`}
   ]}
   highlight={[4]}
 />`,
-    studio: { starter: { tokens: [['keyword', 'let'], ['ident', 'x'], ['op', '='], ['number', '1']] } },
+    studio: { keywords: 'lexer, tokens, source code, syntax', starter: { tokens: [['keyword', 'let'], ['ident', 'x'], ['op', '='], ['number', '1']] } },
   },
   {
     name: 'Tree',
@@ -283,7 +285,7 @@ FAIL	example/count	0.003s\`}
     usage: `<Tree data='(let total (* price 3))' caption="The tree a parser builds for let total = price * 3." />
 
 <Tree data='(+ 1 !(* 2 3))' />`,
-    studio: { starter: { data: '(+ 1 (* 2 3))' } },
+    studio: { keywords: 'tree diagram, AST, syntax tree, B-tree, graph', starter: { data: '(+ 1 (* 2 3))' } },
   },
   {
     name: 'Grammar',
@@ -296,7 +298,7 @@ FAIL	example/count	0.003s\`}
 term   = factor { ("*" | "/") factor } ;
 factor = NUMBER | "(" expr ")" ;\`}
 />`,
-    studio: { starter: { rules: 'expr = term { "+" term } ;\nterm = NUMBER ;' } },
+    studio: { keywords: 'grammar, BNF, EBNF, syntax rules, parser', starter: { rules: 'expr = term { "+" term } ;\nterm = NUMBER ;' } },
   },
   {
     name: 'Pipeline',
@@ -312,7 +314,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     { name: 'VM', note: 'runs it' },
   ]}
 />`,
-    studio: { starter: { stages: [{ name: 'Input', out: 'data' }, { name: 'Stage' }] } },
+    studio: { keywords: 'pipeline diagram, stages, flow, compiler', starter: { stages: [{ name: 'Input', out: 'data' }, { name: 'Stage' }] } },
   },
   {
     name: 'Derivation',
@@ -323,7 +325,7 @@ factor = NUMBER | "(" expr ")" ;\`}
   steps={['[E]', '[E] + T', '[T] + T', '[F] + T', 'n + [T]', 'n + [F]', 'n + n']}
   rules={['E → E + T', 'E → T', 'T → F', 'F → n', 'T → F', 'F → n']}
 />`,
-    studio: { starter: { steps: ['[S]', 'a[S]b', 'ab'], rules: ['S → aSb', 'S → ε'] } },
+    studio: { keywords: 'derivation, grammar, rewriting, formal languages', starter: { steps: ['[S]', 'a[S]b', 'ab'], rules: ['S → aSb', 'S → ε'] } },
   },
   {
     name: 'StateMachine',
@@ -342,7 +344,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     { from: 'q2', to: 'q0', label: 'b' },
   ]}
 />`,
-    studio: { starter: { states: [{ id: 'q0', initial: true }, { id: 'q1', accepting: true }], transitions: [{ from: 'q0', to: 'q1', label: 'a' }] } },
+    studio: { keywords: 'state machine diagram, automaton, DFA, NFA, FSM', starter: { states: [{ id: 'q0', initial: true }, { id: 'q1', accepting: true }], transitions: [{ from: 'q0', to: 'q1', label: 'a' }] } },
   },
   {
     name: 'Tape',
@@ -356,7 +358,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     { tape: '_101_', head: 3, state: 'q0', note: 'q0, 0 → q0, 0, R' },
   ]}
 />`,
-    studio: { starter: { tape: '_101_', head: 1, state: 'q0' } },
+    studio: { keywords: 'Turing machine, tape, head, computation', starter: { tape: '_101_', head: 1, state: 'q0' } },
   },
   {
     name: 'Register',
@@ -375,7 +377,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     { name: 'MODER0', bits: 2, access: 'rw' },
   ]}
 />`,
-    studio: { starter: { name: 'CTRL', address: '0x00', reset: '0x00', width: 8, row: 8, fields: [{ name: 'EN', bits: 1, access: 'rw' }, { reserved: true, bits: 7 }] } },
+    studio: { keywords: 'register diagram, bits, datasheet, peripheral, MMIO', starter: { name: 'CTRL', address: '0x00', reset: '0x00', width: 8, row: 8, fields: [{ name: 'EN', bits: 1, access: 'rw' }, { reserved: true, bits: 7 }] } },
   },
   {
     name: 'MemoryMap',
@@ -392,7 +394,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     ...
   ]}
 />`,
-    studio: { starter: { regions: [{ name: 'Flash', start: '0x0800_0000', end: '0x080F_FFFF' }, { name: 'SRAM', start: '0x2000_0000', end: '0x2001_FFFF' }] } },
+    studio: { keywords: 'memory map, address space, flash, RAM', starter: { regions: [{ name: 'Flash', start: '0x0800_0000', end: '0x080F_FFFF' }, { name: 'SRAM', start: '0x2000_0000', end: '0x2001_FFFF' }] } },
   },
   {
     name: 'Timing',
@@ -407,7 +409,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     { name: 'MOSI', wave: 'x========x', data: ['1', '0', '1', '0', '0', '1', '1', '0'] },
   ]}
 />`,
-    studio: { starter: { signals: [{ name: 'CLK', wave: 'p.......' }, { name: 'DATA', wave: 'x=.=.=.x', data: ['A', 'B', 'C'] }] } },
+    studio: { keywords: 'timing diagram, clock, signal, SPI, I2C, waveform', starter: { signals: [{ name: 'CLK', wave: 'p.......' }, { name: 'DATA', wave: 'x=.=.=.x', data: ['A', 'B', 'C'] }] } },
   },
   {
     name: 'Pinout',
@@ -423,7 +425,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     ...
   ]}
 />`,
-    studio: { starter: { name: 'Chip', pins: ['VCC', 'A0', 'A1', 'GND'] } },
+    studio: { keywords: 'pinout diagram, pins, chip, microcontroller, GPIO', starter: { name: 'Chip', pins: ['VCC', 'A0', 'A1', 'GND'] } },
   },
   {
     name: 'RegisterFile',
@@ -438,7 +440,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     [{ name: 'PC', bits: 16, value: '0x0100', highlight: true }],
   ]}
 />`,
-    studio: { starter: { rows: [[{ name: 'A', bits: 8 }, { name: 'F', bits: 8 }], [{ name: 'PC', bits: 16 }]] } },
+    studio: { keywords: 'CPU registers, emulator, register file', starter: { rows: [[{ name: 'A', bits: 8 }, { name: 'F', bits: 8 }], [{ name: 'PC', bits: 16 }]] } },
   },
   {
     name: 'OpcodeTable',
@@ -454,7 +456,7 @@ factor = NUMBER | "(" expr ")" ;\`}
 />
 
 <OpcodeTable layout="grid" groups={{ load: 'Load', alu: 'Arithmetic' }} ops={[{ code: '0x3E', name: 'LD A,n8', group: 'load' }, ...]} />`,
-    studio: { starter: { ops: [{ code: '00E0', name: 'CLS', effect: 'Clear the display.' }] } },
+    studio: { keywords: 'opcodes, instruction set, ISA, emulator, CPU', starter: { ops: [{ code: '00E0', name: 'CLS', effect: 'Clear the display.' }] } },
   },
   {
     name: 'Matrix',
@@ -467,7 +469,7 @@ factor = NUMBER | "(" expr ")" ;\`}
   highlightColumns={[2]}
   caption="A 2D translation in homogeneous coordinates."
 />`,
-    studio: { starter: { rows: [[1, 0], [0, 1]] } },
+    studio: { keywords: 'matrix, transform, linear algebra, math', starter: { rows: [[1, 0], [0, 1]] } },
   },
   {
     name: 'Plane',
@@ -479,7 +481,7 @@ factor = NUMBER | "(" expr ")" ;\`}
   points={[{ at: [3, 1.6], label: 'P', highlight: true }]}
   vectors={[{ from: [0.5, 0.5], to: [4, 1], label: 'e0' }]}
 />`,
-    studio: { starter: { points: [{ at: [1, 2], label: 'P' }] } },
+    studio: { keywords: '2D plot, coordinates, vectors, triangle, geometry, graph', starter: { points: [{ at: [1, 2], label: 'P' }] } },
   },
   {
     name: 'PixelGrid',
@@ -496,7 +498,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     ...
   ]}
 />`,
-    studio: { starter: { pixels: ['..#..', '.###.', '#####'] } },
+    studio: { keywords: 'pixels, framebuffer, rasterizer, image, grid', starter: { pixels: ['..#..', '.###.', '#####'] } },
   },
   {
     name: 'Waveform',
@@ -509,7 +511,7 @@ factor = NUMBER | "(" expr ")" ;\`}
     { wave: 'sine', freq: 1, stems: true, label: 'sampled at 12 Hz' },
   ]}
 />`,
-    studio: { starter: { signals: [{ wave: 'sine' }] } },
+    studio: { keywords: 'waveform, signal, audio, DSP, sine, plot, graph', starter: { signals: [{ wave: 'sine' }] } },
   },
   {
     name: 'Math',
@@ -529,7 +531,7 @@ $$`,
     purpose: 'Hides an image (or any children) behind a blur and a crossed-out eye until the reader clicks. It can be hidden again.',
     props: ['src?: image path', 'alt?', "label? (default 'Click to reveal')", 'caption?', 'children?: any content instead of src'],
     usage: `<Spoiler src="/images/expected-render.png" alt="The triangle, antialiased" label="What your render should look like" />`,
-    studio: { starter: { src: '/images/answer.png', alt: '' } },
+    studio: { keywords: 'spoiler, hide, blur, reveal, answer, image', starter: { src: '/images/answer.png', alt: '' } },
   },
   {
     name: 'ImageCompare',
@@ -543,6 +545,6 @@ $$`,
   afterLabel="16 samples"
   pixelated
 />`,
-    studio: { starter: { before: '/images/before.png', after: '/images/after.png' } },
+    studio: { keywords: 'image comparison, before after, slider, compare', starter: { before: '/images/before.png', after: '/images/after.png' } },
   },
 ];

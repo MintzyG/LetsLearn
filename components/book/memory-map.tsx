@@ -42,7 +42,7 @@ export function MemoryMap({
   return (
     <Diagram caption={caption}>
       <div className="overflow-x-auto">
-        <ol className="grid min-w-[26rem] grid-cols-[max-content_minmax(0,1fr)] gap-x-4 font-mono text-[0.75rem] tabular-nums">
+        <ol className="grid min-w-[17rem] grid-cols-[max-content_minmax(0,1fr)] gap-x-2 font-mono text-[0.6875rem] tabular-nums sm:gap-x-4 sm:text-[0.75rem]">
           {rows.map((r, i) => (
             <li key={i} className="contents">
               <span className="flex flex-col justify-between py-0.5 text-right text-fd-muted-foreground">
@@ -51,7 +51,7 @@ export function MemoryMap({
               </span>
               <span
                 className={cn(
-                  'flex min-h-14 items-center justify-between gap-3 border-x border-t px-4 py-2 last:border-b',
+                  'flex min-h-14 items-center justify-between gap-3 border-x border-t px-3 py-2 last:border-b sm:px-4',
                   r.gap
                     ? 'border-dashed border-fd-border bg-transparent text-fd-muted-foreground'
                     : r.highlight

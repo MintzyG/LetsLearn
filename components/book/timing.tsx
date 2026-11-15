@@ -112,7 +112,7 @@ export function Timing({ signals, ticks, caption }: { signals: TimingSignal[]; /
   return (
     <Diagram caption={caption}>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} width={width} className="block max-w-none font-mono text-[12px]" role="img" aria-label={`Timing diagram of ${signals.map((s) => s.name).join(', ')}`}>
+        <svg viewBox={`0 0 ${width} ${height}`} width={width} style={{ minWidth: Math.min(width, 340) }} className="block h-auto max-w-full font-mono text-[12px]" role="img" aria-label={`Timing diagram of ${signals.map((s) => s.name).join(', ')}`}>
           <defs>
             <pattern id={hatch} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
               <line x1="0" y1="0" x2="0" y2="5" className="stroke-fd-muted-foreground/50" strokeWidth="1.5" />

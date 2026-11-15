@@ -492,6 +492,23 @@ export default function ComponentsPage() {
   const missing = catalog.filter((c) => !(c.name in demos)).map((c) => c.name);
   if (missing.length) throw new Error(`No demo for ${missing.join(', ')}`);
 
+  const index = groups.map((g) => (
+    <div key={g} className="mb-4">
+      <p className="mb-1 text-xs font-medium tracking-wide text-fd-foreground uppercase">{g}</p>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm lg:flex-col">
+        {catalog
+          .filter((c) => c.group === g)
+          .map((c) => (
+            <li key={c.name}>
+              <a href={`#${c.name}`} className="font-mono text-fd-muted-foreground hover:text-fd-primary">
+                {c.name}
+              </a>
+            </li>
+          ))}
+      </ul>
+    </div>
+  ));
+
   return (
     <main className="flex-1">
       <section className="mint-grid border-b">
@@ -507,24 +524,17 @@ export default function ComponentsPage() {
         </div>
       </section>
 
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 lg:grid-cols-[11rem_minmax(0,1fr)]">
-        <nav aria-label="Components" className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto">
-          {groups.map((g) => (
-            <div key={g} className="mb-4">
-              <p className="mb-1 text-xs font-medium tracking-wide text-fd-foreground uppercase">{g}</p>
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm lg:flex-col">
-                {catalog
-                  .filter((c) => c.group === g)
-                  .map((c) => (
-                    <li key={c.name}>
-                      <a href={`#${c.name}`} className="font-mono text-fd-muted-foreground hover:text-fd-primary">
-                        {c.name}
-                      </a>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ))}
+      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-8 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-10 lg:py-12">
+        {/* Phones: the list folds into one line above the components. */}
+        <details className="group rounded-xl border border-fd-border bg-fd-card lg:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-fd-foreground">
+            Jump to a component
+            <span className="text-fd-muted-foreground transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div className="border-t border-fd-border px-4 pt-3">{index}</div>
+        </details>
+        <nav aria-label="Components" className="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto">
+          {index}
         </nav>
 
         <div>

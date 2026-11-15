@@ -94,7 +94,7 @@ export function StateMachine({ states, transitions, caption }: { states: Machine
   return (
     <Diagram caption={caption}>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 ${-top} ${width} ${top + bottom}`} width={width} className="mx-auto block max-w-none" role="img" aria-label={`State machine with states ${states.map((s) => s.label ?? s.id).join(', ')}`}>
+        <svg viewBox={`0 ${-top} ${width} ${top + bottom}`} width={width} style={{ minWidth: Math.min(width, 340) }} className="mx-auto block h-auto max-w-full" role="img" aria-label={`State machine with states ${states.map((s) => s.label ?? s.id).join(', ')}`}>
           <defs>
             {[true, false].map((on) => (
               <marker key={String(on)} id={`sm-arrow-${on ? 'on' : 'off'}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

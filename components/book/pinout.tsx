@@ -65,7 +65,7 @@ export function Pinout({
   return (
     <Diagram caption={caption}>
       <div className="overflow-x-auto">
-        <div className="mx-auto grid w-max min-w-[24rem] grid-cols-[minmax(9rem,max-content)_7rem_minmax(9rem,max-content)]">
+        <div className="mx-auto grid w-max grid-cols-[minmax(6.5rem,max-content)_4rem_minmax(6.5rem,max-content)] sm:grid-cols-[minmax(9rem,max-content)_7rem_minmax(9rem,max-content)]">
           <Side pins={l} side="left" />
           <div className="relative -mx-px flex items-center justify-center rounded-md border border-fd-foreground/40 bg-fd-foreground/[0.07]">
             {pins && <span aria-hidden className="absolute top-[-1px] left-1/2 h-3 w-6 -translate-x-1/2 rounded-b-full border border-t-0 border-fd-foreground/40 bg-fd-card" />}

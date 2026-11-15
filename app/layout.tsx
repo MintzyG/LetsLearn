@@ -1,4 +1,5 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
+import 'katex/dist/katex.min.css';
 import './global.css';
 import { IBM_Plex_Mono, IBM_Plex_Sans, Young_Serif } from 'next/font/google';
 import StaticSearchDialog from '@/components/search';

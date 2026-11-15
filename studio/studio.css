@@ -1,0 +1,12 @@
+/*
+ * The book components' styles inside Fumadocs Studio. Only Tailwind's theme and utilities:
+ * Studio brings its own base styles, and preflight would fight them.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import '../app/mint.css';
+@import 'katex/dist/katex.min.css';
+
+@source '../components/book';
+@source './';

@@ -5,6 +5,8 @@ import { defineDocs } from 'fumadocs-mdx/macro';
 import { applyMdxPreset } from 'fumadocs-mdx/config';
 import { mintDark, mintLight } from './code-themes';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 const docs = defineDocs({
   dir: 'content/docs',
@@ -12,6 +14,9 @@ const docs = defineDocs({
     schema: pageSchema,
     mdxOptions: applyMdxPreset({
       rehypeCodeOptions: { themes: { light: mintLight, dark: mintDark } },
+      // Math: $inline$ and $$display$$, typeset by KaTeX before code highlighting runs.
+      remarkPlugins: [remarkMath],
+      rehypePlugins: (v) => [rehypeKatex, ...v],
     }),
     postprocess: {
       includeProcessedMarkdown: true,
